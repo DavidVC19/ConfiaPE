@@ -194,13 +194,14 @@ const tecnicos = [
   }
 ]
 
+type Tab = 'servicios' | 'resenas' | 'certificaciones'
 
 export default function TecnicoDetalle({ params }: { params: Promise<{ id: string }> }) {
 
   const { id } = use(params)
 
   const tecnico = tecnicos.find((t) => t.id === Number(id))
-  const [activeTab, setActiveTab] = useState<'servicios' | 'resenas' | 'certificaciones'>('servicios')
+  const [activeTab, setActiveTab] = useState<Tab>('servicios')
   const [isFavorite, setIsFavorite] = useState(false)
 
   if (!tecnico) return notFound()
@@ -249,7 +250,7 @@ export default function TecnicoDetalle({ params }: { params: Promise<{ id: strin
                       <div className="absolute -bottom-4 -right-4 flex flex-col gap-2">
                         <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xl">
                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 013.138-3.138z" clipRule="evenodd" />
                           </svg>
                           Verificado
                         </div>
@@ -364,7 +365,6 @@ export default function TecnicoDetalle({ params }: { params: Promise<{ id: strin
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Contenido principal con tabs */}
             <div className="lg:col-span-2">
-              {/* Tabs modernos */}
               <div className="bg-white rounded-3xl shadow-xl p-2 mb-6 border border-gray-100">
                 <div className="flex gap-2">
                   {[
@@ -374,7 +374,7 @@ export default function TecnicoDetalle({ params }: { params: Promise<{ id: strin
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
+                      onClick={() => setActiveTab(tab.id as Tab)}
                       className={`flex-1 py-4 px-6 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                         activeTab === tab.id
                           ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
@@ -456,7 +456,7 @@ export default function TecnicoDetalle({ params }: { params: Promise<{ id: strin
                         <div key={index} className="flex items-center gap-4 p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 hover:shadow-lg transition-all">
                           <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                             <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 013.138-3.138z" clipRule="evenodd" />
                             </svg>
                           </div>
                           <span className="text-gray-900 font-bold text-lg">{cert}</span>
@@ -535,8 +535,6 @@ export default function TecnicoDetalle({ params }: { params: Promise<{ id: strin
                   Solicitar Presupuesto
                 </button>
               </div>
-
-
             </div>
           </div>
         </div>

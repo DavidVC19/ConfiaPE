@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-<<<<<<< HEAD
     "next": "^15.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
@@ -31,7 +30,6 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs"
-=======
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "next": "15.5.4"
@@ -47,5 +45,4 @@
     "eslint-config-next": "15.5.4",
     "@eslint/eslintrc": "^3"
   }
->>>>>>> 5535697ffeebe8efab99df59f4c68b65c865afda
 }

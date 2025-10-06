@@ -5,6 +5,7 @@ import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import TecnicoCard from "@/components/TecnicoCard"
 import Link from "next/link"
+import { useRouter } from 'next/navigation' 
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false)
@@ -100,7 +101,18 @@ export default function Home() {
       bgColor: "bg-gray-500/10"
     },
   ]
-
+  const router = useRouter() 
+  
+  const [busqueda, setBusqueda] = useState("")
+  const [resultados, setResultados] = useState(tecnicos)
+    const handleBuscar = () => {
+    const query = busqueda.trim()
+    if (query !== "") {
+      router.push(`/Tecnicos?search=${encodeURIComponent(query)}`)
+    } else {
+      router.push("/Tecnicos")
+    }
+  }
   const beneficios = [
     {
       icono: "🛡️",
@@ -197,35 +209,81 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Buscador Ultra Moderno */}
-              <div className="max-w-4xl mx-auto">
-                <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl blur-xl opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-                  <div className="relative bg-white rounded-3xl shadow-2xl p-4 border border-gray-100">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-grow relative">
-                        <svg className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                          type="text"
-                          placeholder="¿Qué servicio necesitas? electricista, fontanero, pintor..."
-                          className="w-full pl-14 pr-6 py-5 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 text-gray-800 text-lg bg-gray-50 border-2 border-transparent focus:border-blue-500 transition-all"
-                        />
-                      </div>
-                      <button className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <span className="relative flex items-center gap-3">
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                          Buscar Ahora
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+{/* Buscador Ultra Moderno */}
+<div className="max-w-4xl mx-auto">
+  <div className="relative group">
+    {/* Efecto de halo brillante */}
+    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl blur-xl opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+
+    {/* Contenedor principal del buscador */}
+    <div className="relative bg-white rounded-3xl shadow-2xl p-3 border border-gray-100">
+      <div className="flex items-center gap-3">
+        {/* Campo de búsqueda */}
+        <div className="relative flex-grow">
+          <svg
+            className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
+            placeholder="¿Qué servicio necesitas? Ej: electricista, fontanero, pintor..."
+            className="w-full pl-14 pr-12 py-5 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 text-gray-800 text-lg bg-gray-50 border-2 border-transparent focus:border-blue-500 transition-all"
+          />
+
+          {/* Botón para limpiar texto (la X) */}
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* Botón de búsqueda */}
+        <button
+          onClick={handleBuscar}
+          className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-5 rounded-2xl font-bold text-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <span className="relative flex items-center gap-3">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            Buscar
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
             </div>
           </div>
         </section>
@@ -314,7 +372,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {tecnicos.map((t, idx) => (
+              {resultados.map((t, idx) => (
                 <div
                   key={t.id}
                   className="animate-fade-in-up"

@@ -45,24 +45,18 @@ export default function Header() {
     >
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 group cursor-pointer relative z-10"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
-              <div className="relative w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
-                <span className="text-white font-bold text-2xl">C</span>
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent group-hover:from-blue-700 group-hover:to-indigo-700 transition-all duration-300">
-                ConfiaPE
-              </span>
-              <span className="text-xs text-gray-500 -mt-1">Técnicos de confianza</span>
-            </div>
-          </Link>
+{/* Logo */}
+{/* Logo */}
+<Link href="/" className="group cursor-pointer relative z-10">
+  <img
+    src="/images/ConfiaPE.png"
+    alt="ConfiaPE Logo"
+    className="w-14 h-14 object-contain transform scale-550 transition-transform duration-300 group-hover:scale-[4.5]"
+  />
+</Link>
+
+
+
 
           {/* Navigation Desktop */}
           <nav className="hidden lg:flex items-center gap-1">

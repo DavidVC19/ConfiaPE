@@ -6,18 +6,28 @@ import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import TecnicoCard from "@/components/TecnicoCard"
 
+// ✅ Definimos el tipo de dato para los técnicos
+interface Tecnico {
+  id: number
+  nombre: string
+  oficio: string
+  estrellas: number
+  imagen: string
+  descripcion: string
+}
+
 export default function TecnicosPage() {
   const searchParams = useSearchParams()
   const searchFromURL = searchParams.get('search') || ""
 
   const [busqueda, setBusqueda] = useState(searchFromURL)
-  const [resultados, setResultados] = useState([])
+  const [resultados, setResultados] = useState<Tecnico[]>([]) // ✅ tipo agregado
   const [vistaGrid, setVistaGrid] = useState(true)
   const [categoriaActiva, setCategoriaActiva] = useState("Todos")
   const [modoCompacto, setModoCompacto] = useState(false)
 
   // Lista de técnicos
-  const tecnicos = [
+  const tecnicos: Tecnico[] = [
     { id: 1, nombre: "Carlos Martínez", oficio: "Electricista", estrellas: 4.8, imagen: "/images/olivis.jpg", descripcion: "Especialista en instalaciones eléctricas y mantenimiento residencial." },
     { id: 2, nombre: "Laura Gómez", oficio: "Fontanera", estrellas: 4.6, imagen: "/images/olivis.jpg", descripcion: "Experta en reparación de fugas y sistemas de agua." },
     { id: 3, nombre: "José Ramírez", oficio: "Aire Acondicionado", estrellas: 4.9, imagen: "/images/olivis.jpg", descripcion: "Instalación y mantenimiento de equipos de refrigeración." },

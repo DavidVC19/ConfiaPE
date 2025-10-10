@@ -166,14 +166,7 @@ export default function Home() {
 
           <div className={`relative max-w-7xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className="text-center mb-12">
-              {/* Badge animado */}
-              <div className="inline-flex items-center gap-2 px-6 py-2 bg-white/80 backdrop-blur-xl rounded-full shadow-lg mb-8 border border-blue-100 animate-fade-in-down">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                </span>
-                <span className="text-sm font-semibold text-gray-700">Más de 500 técnicos disponibles ahora</span>
-              </div>
+              
 
               <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
                 <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
@@ -434,56 +427,6 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Final Mejorado */}
-        <section className="py-24 px-4 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"></div>
-          
-          <div className="max-w-5xl mx-auto relative z-10">
-            <div className="relative group">
-              <div className="absolute -inset-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-[3rem] blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-1000"></div>
-              
-              <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-[3rem] shadow-2xl p-12 md:p-16 text-center text-white overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
-                
-                <div className="relative z-10">
-                  <div className="inline-flex items-center gap-2 px-6 py-2 bg-white/20 backdrop-blur-xl rounded-full mb-8 border border-white/30">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-400"></span>
-                    </span>
-                    <span className="text-sm font-bold">Únete a más de 500 técnicos exitosos</span>
-                  </div>
-
-                  <h2 className="text-5xl md:text-6xl font-black mb-6 leading-tight">
-                    ¿Eres un técnico<br />
-                    <span className="text-yellow-300">profesional?</span>
-                  </h2>
-                  <p className="text-2xl text-blue-100 mb-10 max-w-2xl mx-auto font-medium">
-                    Únete a ConfiaPE y accede a miles de clientes que buscan tus servicios cada día
-                  </p>
-                  
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button className="group relative bg-white text-blue-600 px-10 py-5 rounded-2xl font-black text-lg overflow-hidden hover:scale-105 transition-all duration-300 shadow-2xl">
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-100 to-yellow-200 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <span className="relative flex items-center justify-center gap-2">
-                        Registrarte como Técnico
-                        <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </span>
-                    </button>
-                    
-                    <button className="px-10 py-5 rounded-2xl font-bold text-lg border-2 border-white/50 hover:bg-white/10 transition-all duration-300 backdrop-blur-sm">
-                      Más Información
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </section>

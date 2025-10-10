@@ -78,9 +78,6 @@ export default function Footer() {
         <p>
           © {new Date().getFullYear()} ConfiaPE. Todos los derechos reservados.
         </p>
-        <p className="mt-2">
-          Diseñado con ❤️ por <a href="https://gptonline.ai/" className="text-blue-400 hover:underline">GPTOnline.ai</a>
-        </p>
       </div>
     </footer>
   );

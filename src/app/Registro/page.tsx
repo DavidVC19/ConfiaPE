@@ -2,6 +2,9 @@
 import Header from "@/components/Header"
 import { useState } from "react"
 import Link from "next/link"
+import { request } from "../../lib/api"
+import { saveSession } from "../../lib/auth"
+import { useRouter } from "next/navigation"
 
 export default function RegistroPage() {
   const [mostrarPassword, setMostrarPassword] = useState(false)
@@ -21,6 +24,9 @@ export default function RegistroPage() {
   const [certificados, setCertificados] = useState<File[]>([])
   
   const [nombreCompleto, setNombreCompleto] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const carrerasTecnicas = [
     'Electricidad',
@@ -51,26 +57,48 @@ export default function RegistroPage() {
     setCertificados(certificados.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e: React.MouseEvent) => {
+  const handleSubmit = async (e: React.MouseEvent) => {
     e.preventDefault()
-    
+    setError(null)
     if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden')
+      setError('Las contraseñas no coinciden')
       return
     }
-    
     if (!aceptaTerminos) {
-      alert('Debes aceptar los términos y condiciones')
+      setError('Debes aceptar los términos y condiciones')
       return
     }
-    
-    if (tipoUsuario === 'cliente') {
-      console.log('Registro Cliente:', { nombreCompleto, email, password, telefono, aceptaTerminos })
-    } else {
-      console.log('Registro Técnico:', { 
-        dni, nombres, apellidos, email, password, telefono, 
-        carreraTecnica, certificados, aceptaTerminos 
-      })
+    setLoading(true)
+    try {
+      if (tipoUsuario === 'cliente') {
+        const res = await request<{ success: boolean; data: { user: any; tokens: { accessToken: string; refreshToken: string } } }>({
+          method: 'POST',
+          path: '/api/auth/register/cliente',
+          body: { nombreCompleto, email, telefono, password },
+        })
+        saveSession(res.data.user, res.data.tokens.accessToken, res.data.tokens.refreshToken)
+        router.push('/')
+      } else {
+        const form = new FormData()
+        form.append('email', email)
+        form.append('password', password)
+        form.append('nombre', `${nombres} ${apellidos}`.trim())
+        form.append('dni', dni)
+        if (telefono) form.append('telefono', telefono)
+        if (carreraTecnica) form.append('oficio', carreraTecnica)
+        certificados.slice(0, 3).forEach((file, idx) => form.append('certificados', file))
+
+        const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/register/tecnico`
+        const res = await fetch(url, { method: 'POST', body: form, credentials: 'include' })
+        const payload = await res.json()
+        if (!res.ok) throw new Error(payload?.error || 'Error registrando técnico')
+        saveSession(payload.data.user, payload.data.tokens.accessToken, payload.data.tokens.refreshToken)
+        router.push('/admin')
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Error en el registro')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -117,6 +145,11 @@ export default function RegistroPage() {
           </div>
 
           <div className="space-y-4">
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
             {tipoUsuario === 'cliente' ? (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -174,21 +207,19 @@ export default function RegistroPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Carrera Técnica
-                  </label>
-                  <select
-                    value={carreraTecnica}
-                    onChange={(e) => setCarreraTecnica(e.target.value)}
-  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400 text-gray-900"
-                  >
-                    <option value="">Selecciona una carrera</option>
-                    {carrerasTecnicas.map((carrera) => (
-                      <option key={carrera} value={carrera}>{carrera}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Carrera Técnica (texto libre) */}
+    <div>
+      <label className="block text-sm font-semibold text-gray-700 mb-2">
+        Carrera Técnica u Oficio
+      </label>
+      <input
+        type="text"
+        value={carreraTecnica}
+        onChange={(e) => setCarreraTecnica(e.target.value)}
+        placeholder="Ejemplo: Electricista, Gasfitero, Carpintero..."
+        className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400 text-gray-900"
+      />
+    </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">

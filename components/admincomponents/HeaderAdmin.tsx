@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import { logout } from "../../src/lib/auth"
+import { useRouter } from "next/navigation"
 
 interface Notificacion {
   id: number
@@ -16,12 +18,19 @@ interface HeaderAdminProps {
   onMenuClick: () => void
   onNotificationClick: () => void
   notifications: Notificacion[]
+  user?: any
 }
 
-export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifications }: HeaderAdminProps) {
+export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifications, user }: HeaderAdminProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const router = useRouter()
   
   const notificacionesNoLeidas = notifications.filter(n => !n.leida).length
+
+  const handleLogout = () => {
+    logout()
+    router.push('/Login')
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg">
@@ -95,11 +104,17 @@ export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifica
                 className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">CM</span>
+                  <span className="text-white font-bold text-sm">
+                    {user ? user.nombre?.charAt(0).toUpperCase() : 'U'}
+                  </span>
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-bold text-gray-900">Carlos Martínez</p>
-                  <p className="text-xs text-gray-500">Electricista</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {user ? user.nombre : 'Usuario'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {user ? (user.rol === 'TECNICO' ? 'Técnico' : user.rol === 'ADMIN' ? 'Administrador' : 'Cliente') : 'Usuario'}
+                  </p>
                 </div>
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -110,8 +125,8 @@ export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifica
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50">
                   <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="font-bold text-gray-900">Carlos Martínez</p>
-                    <p className="text-sm text-gray-500">carlos.martinez@email.com</p>
+                    <p className="font-bold text-gray-900">{user ? user.nombre : 'Usuario'}</p>
+                    <p className="text-sm text-gray-500">{user ? user.email : 'usuario@email.com'}</p>
                   </div>
                   
                   <div className="py-2">
@@ -139,7 +154,10 @@ export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifica
                   </div>
                   
                   <div className="border-t border-gray-100 pt-2">
-                    <button className="w-full flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors">
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+                    >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                       </svg>

@@ -2,18 +2,41 @@
 import Header from "@/components/Header"
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { login as loginApi, getRedirectPathByRole, saveSession } from "../../lib/auth"
 
 export default function LoginPage() {
   const [mostrarPassword, setMostrarPassword] = useState(false)
-  const [tipoUsuario, setTipoUsuario] = useState<'cliente' | 'tecnico'>('cliente')
+  const [tipoUsuario, setTipoUsuario] = useState<'cliente' | 'tecnico' | 'admin'>('cliente')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [recordarme, setRecordarme] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Login:', { email, password, tipoUsuario, recordarme })
-    // Aquí iría tu lógica de autenticación
+    setError(null)
+    setLoading(true)
+    try {
+      const roleMap = {
+        'cliente': 'CLIENTE',
+        'tecnico': 'TECNICO',
+        'admin': 'ADMIN',
+      } as const
+      const { user, tokens } = await loginApi(email, password, roleMap[tipoUsuario])
+      // Si no desea recordar, no persistimos refreshToken
+      if (!recordarme) {
+        saveSession(user, tokens.accessToken)
+      }
+      const to = getRedirectPathByRole(user.rol)
+      router.push(to)
+    } catch (err: any) {
+      setError(err?.message || 'Error al iniciar sesión')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -56,10 +79,27 @@ export default function LoginPage() {
             >
               Técnico
             </button>
+            <button
+              onClick={() => setTipoUsuario('admin')}
+              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                tipoUsuario === 'admin'
+                  ? 'bg-white text-blue-600 shadow-md'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Admin
+            </button>
           </div>
 
           {/* Formulario */}
           <div className="space-y-5">
+            {/* Error */}
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
             {/* Email */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -135,9 +175,10 @@ export default function LoginPage() {
             {/* Botón de login */}
             <button
               onClick={handleSubmit}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all duration-200"
+              disabled={loading}
+              className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold transition-all duration-200 ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-105'}`}
             >
-              Iniciar Sesión
+              {loading ? 'Ingresando...' : 'Iniciar Sesión'}
             </button>
           </div>
 

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
 import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import { getStoredUser, me } from "../../../lib/auth"
+import { useRouter } from "next/navigation"
 
 const perfilData = {
   nombre: "Carlos Martínez",
@@ -47,6 +49,58 @@ export default function PerfilPage() {
   const [editando, setEditando] = useState(false)
   const [perfil, setPerfil] = useState(perfilData)
   const [isMobile, setIsMobile] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  // Cargar datos del usuario
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        // Primero intentar obtener datos del storage
+        const storedUser = getStoredUser()
+        if (storedUser) {
+          setUser(storedUser)
+          // Actualizar perfil con datos del usuario
+          setPerfil(prev => ({
+            ...prev,
+            nombre: storedUser.nombre || prev.nombre,
+            email: storedUser.email || prev.email,
+            telefono: storedUser.telefono || prev.telefono,
+          }))
+        }
+        
+        // Luego actualizar con datos frescos del servidor
+        const userData = await me()
+        setUser(userData)
+        
+        // Actualizar perfil con datos completos del servidor
+        if (userData.perfil) {
+          setPerfil(prev => ({
+            ...prev,
+            nombre: userData.nombre || prev.nombre,
+            email: userData.email || prev.email,
+            telefono: userData.telefono || prev.telefono,
+            oficio: userData.perfil.oficio || prev.oficio,
+            experiencia: userData.perfil.experiencia || prev.experiencia,
+            ubicacion: userData.perfil.ubicacion || prev.ubicacion,
+            descripcion: userData.perfil.descripcion || prev.descripcion,
+            certificaciones: userData.perfil.certificaciones || prev.certificaciones,
+            servicios: userData.perfil.servicios || prev.servicios,
+            precios: userData.perfil.precios || prev.precios,
+          }))
+        }
+      } catch (err: any) {
+        setError(err?.message || 'Error cargando perfil')
+        // Si hay error, redirigir al login
+        router.push('/Login')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadUser()
+  }, [router])
 
   // Detectar si es móvil
   useEffect(() => {
@@ -71,7 +125,49 @@ export default function PerfilPage() {
 
   const handleCancelar = () => {
     setEditando(false)
-    setPerfil(perfilData) // Restaurar datos originales
+    // Restaurar datos del usuario actual en lugar de datos de ejemplo
+    if (user) {
+      setPerfil(prev => ({
+        ...prev,
+        nombre: user.nombre || prev.nombre,
+        email: user.email || prev.email,
+        telefono: user.telefono || prev.telefono,
+        oficio: user.perfil?.oficio || prev.oficio,
+        experiencia: user.perfil?.experiencia || prev.experiencia,
+        ubicacion: user.perfil?.ubicacion || prev.ubicacion,
+        descripcion: user.perfil?.descripcion || prev.descripcion,
+        certificaciones: user.perfil?.certificaciones || prev.certificaciones,
+        servicios: user.perfil?.servicios || prev.servicios,
+        precios: user.perfil?.precios || prev.precios,
+      }))
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando perfil...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Usuario no encontrado'}</p>
+          <button 
+            onClick={() => router.push('/Login')}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Ir al Login
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -80,6 +176,7 @@ export default function PerfilPage() {
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
+        user={user}
       />
 
       <div className="flex relative">
@@ -117,7 +214,9 @@ export default function PerfilPage() {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6 lg:mb-8 gap-4">
                 <div className="flex items-center gap-4 sm:gap-6">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl lg:rounded-3xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-bold text-lg sm:text-xl lg:text-2xl">CM</span>
+                    <span className="text-white font-bold text-lg sm:text-xl lg:text-2xl">
+                      {user ? user.nombre?.charAt(0).toUpperCase() : 'U'}
+                    </span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 truncate">{perfil.nombre}</h2>

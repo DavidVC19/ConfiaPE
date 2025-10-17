@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
 import AdminSidebar from "@/components/admincomponents/AdminSidebar"
 import StatsCard from "@/components/admincomponents/StatsCard"
 import RecentJobs from "@/components/admincomponents/RecentJobs"
 import NotificationsPanel from "@/components/admincomponents/NotificationsPanel"
+import { getStoredUser, me } from "../../lib/auth"
+import { useRouter } from "next/navigation"
 
 // Datos de ejemplo para el dashboard
 const statsData = {
@@ -77,6 +79,60 @@ const notifications = [
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        // Primero intentar obtener datos del storage
+        const storedUser = getStoredUser()
+        if (storedUser) {
+          setUser(storedUser)
+        }
+        
+        // Luego actualizar con datos frescos del servidor
+        const userData = await me()
+        setUser(userData)
+      } catch (err: any) {
+        setError(err?.message || 'Error cargando usuario')
+        // Si hay error, redirigir al login
+        router.push('/Login')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadUser()
+  }, [router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Usuario no encontrado'}</p>
+          <button 
+            onClick={() => router.push('/Login')}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Ir al Login
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -85,6 +141,7 @@ export default function AdminDashboard() {
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
+        user={user}
       />
 
       <div className="flex">
@@ -100,10 +157,10 @@ export default function AdminDashboard() {
             {/* Header del dashboard */}
             <div className="mb-8">
               <h1 className="text-4xl font-black text-gray-900 mb-2">
-                Dashboard Técnico
+                Dashboard {user.rol === 'TECNICO' ? 'Técnico' : user.rol === 'ADMIN' ? 'Administrador' : 'Usuario'}
               </h1>
               <p className="text-gray-600 text-lg">
-                Bienvenido de vuelta, Carlos. Aquí tienes un resumen de tu actividad.
+                Bienvenido de vuelta, {user.nombre}. Aquí tienes un resumen de tu actividad.
               </p>
             </div>
 

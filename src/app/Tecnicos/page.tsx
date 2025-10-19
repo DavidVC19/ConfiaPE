@@ -7,12 +7,39 @@ import Footer from "@/components/Footer"
 import TecnicoCard from "@/components/TecnicoCard"
 
 interface Tecnico {
-  id: number
-  nombre: string
+  id: string
+  nombres: string
+  apellidos: string
   oficio: string
-  estrellas: number
-  imagen: string
   descripcion: string
+  ubicacion: string
+  calificacionPromedio: number
+  trabajosCompletados: number
+  precioMin: number | string // ✅ Actualizado para aceptar string también
+  precioMax: number | string // ✅ Actualizado para aceptar string también
+  experienciaAnios: number
+  verificado: boolean
+  disponible: boolean
+  user: {
+    nombre: string
+    avatarUrl: string | null
+  }
+  _count: {
+    reviews: number
+  }
+}
+
+interface TecnicosResponse {
+  success: boolean
+  data: {
+    data: Tecnico[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      pages: number
+    }
+  }
 }
 
 // ✅ Extraemos el contenido principal a un componente secundario
@@ -22,32 +49,123 @@ function TecnicosContent() {
 
   const [busqueda, setBusqueda] = useState(searchFromURL)
   const [resultados, setResultados] = useState<Tecnico[]>([])
+  const [todosLosTecnicos, setTodosLosTecnicos] = useState<Tecnico[]>([])
   const [vistaGrid, setVistaGrid] = useState(true)
   const [categoriaActiva, setCategoriaActiva] = useState("Todos")
   const [modoCompacto, setModoCompacto] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const tecnicos: Tecnico[] = [
-    { id: 1, nombre: "Carlos Martínez", oficio: "Electricista", estrellas: 4.8, imagen: "/images/olivis.jpg", descripcion: "Especialista en instalaciones eléctricas y mantenimiento residencial." },
-    { id: 2, nombre: "Laura Gómez", oficio: "Fontanera", estrellas: 4.6, imagen: "/images/olivis.jpg", descripcion: "Experta en reparación de fugas y sistemas de agua." },
-    { id: 3, nombre: "José Ramírez", oficio: "Aire Acondicionado", estrellas: 4.9, imagen: "/images/olivis.jpg", descripcion: "Instalación y mantenimiento de equipos de refrigeración." },
-    { id: 4, nombre: "Ana Torres", oficio: "Pintora", estrellas: 4.7, imagen: "/images/olivis.jpg", descripcion: "Pintura interior y exterior de alta calidad." },
-    { id: 5, nombre: "Miguel Ángel Castro", oficio: "Carpintero", estrellas: 4.9, imagen: "/images/olivis.jpg", descripcion: "Especialista en muebles a medida y reparaciones de madera." },
-    { id: 6, nombre: "Sandra Vargas", oficio: "Cerrajera", estrellas: 4.5, imagen: "/images/olivis.jpg", descripcion: "Servicios de seguridad y cerrajería 24/7." },
+  // Cargar técnicos desde la API
+  useEffect(() => {
+    const cargarTecnicos = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const response = await fetch('http://localhost:5000/api/tecnicos', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`)
+        }
+        
+        const result: TecnicosResponse = await response.json()
+        
+        console.log('Respuesta completa de la API:', result)
+        
+        // Tu API devuelve: { success: true, data: { data: [...], pagination: {...} } }
+        let tecnicos: Tecnico[] = []
+        
+        if (result.success && result.data && Array.isArray(result.data.data)) {
+          tecnicos = result.data.data
+        } else if (Array.isArray(result.data)) {
+          tecnicos = result.data
+        } else if (Array.isArray(result)) {
+          tecnicos = result
+        } else {
+          console.error('Formato de respuesta inesperado:', result)
+          throw new Error('Formato de respuesta inválido')
+        }
+        
+        // Filtrar solo técnicos disponibles
+        const tecnicosFiltrados = tecnicos.filter((tecnico: Tecnico) => tecnico.disponible)
+        
+        setTodosLosTecnicos(tecnicosFiltrados)
+        setResultados(tecnicosFiltrados)
+      } catch (err) {
+        console.error('Error al cargar técnicos:', err)
+        setError('No se pudieron cargar los técnicos. Por favor, intenta de nuevo.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    cargarTecnicos()
+  }, [])
+
+  // Obtener categorías únicas de los técnicos
+  const categorias = [
+    { nombre: "Todos", icono: "⚙️" },
+    ...Array.from(new Set(todosLosTecnicos.map(t => t.oficio).filter(Boolean)))
+      .map(oficio => ({
+        nombre: oficio,
+        icono: getIconoOficio(oficio)
+      }))
   ]
 
+  // Función para obtener icono según el oficio
+  function getIconoOficio(oficio: string): string {
+    const iconos: { [key: string]: string } = {
+      'electricista': '⚡',
+      'fontanero': '🔧',
+      'fontanera': '🔧',
+      'gasfitero': '🔧',
+      'aire acondicionado': '❄️',
+      'climatización': '❄️',
+      'carpintero': '🪚',
+      'carpintería': '🪚',
+      'pintor': '🎨',
+      'pintora': '🎨',
+      'cerrajero': '🔑',
+      'cerrajera': '🔑',
+    }
+    
+    return iconos[oficio.toLowerCase()] || '🔧'
+  }
+
+  // ✅ Función para convertir precios de string a number
+  const parsePrecio = (precio: number | string | undefined): number | null => {
+    if (precio === undefined || precio === null) return null
+    if (typeof precio === 'number') return precio
+    if (typeof precio === 'string') {
+      const parsed = parseFloat(precio)
+      return isNaN(parsed) ? null : parsed
+    }
+    return null
+  }
+
+  // Filtrar resultados
   useEffect(() => {
-    let filtrados = tecnicos
+    let filtrados = todosLosTecnicos
 
     if (categoriaActiva !== "Todos") {
       filtrados = filtrados.filter(t =>
-        t.oficio.toLowerCase().includes(categoriaActiva.toLowerCase())
+        t.oficio?.toLowerCase().includes(categoriaActiva.toLowerCase())
       )
     }
 
     if (busqueda.trim()) {
       filtrados = filtrados.filter(t =>
-        t.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        t.oficio.toLowerCase().includes(busqueda.toLowerCase())
+        t.nombres?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        t.apellidos?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        t.oficio?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        t.descripcion?.toLowerCase().includes(busqueda.toLowerCase())
       )
       setModoCompacto(true)
     } else {
@@ -55,7 +173,7 @@ function TecnicosContent() {
     }
 
     setResultados(filtrados)
-  }, [busqueda, categoriaActiva])
+  }, [busqueda, categoriaActiva, todosLosTecnicos])
 
   useEffect(() => {
     if (searchFromURL && !busqueda) {
@@ -67,16 +185,6 @@ function TecnicosContent() {
     setBusqueda("")
     setCategoriaActiva("Todos")
   }
-
-  const categorias = [
-    { nombre: "Todos", icono: "⚙️" },
-    { nombre: "Electricista", icono: "⚡" },
-    { nombre: "Fontanera", icono: "🔧" },
-    { nombre: "Aire Acondicionado", icono: "❄️" },
-    { nombre: "Carpintero", icono: "🪚" },
-    { nombre: "Pintora", icono: "🎨" },
-    { nombre: "Cerrajera", icono: "🔑" },
-  ]
 
   return (
     <main className="flex-grow pt-24 pb-16">
@@ -121,52 +229,122 @@ function TecnicosContent() {
       </section>
 
       {/* Categorías */}
-      <section
-        className={`transition-all duration-500 ${
-          modoCompacto
-            ? 'sticky top-20 z-20 bg-white/80 backdrop-blur-xl border-y border-gray-200 shadow-sm py-2'
-            : 'max-w-6xl mx-auto px-4 mb-12 py-8'
-        }`}
-      >
-        <div
-          className={`flex flex-wrap justify-center gap-3 ${
-            modoCompacto ? 'overflow-x-auto scrollbar-hide px-2' : ''
+      {!loading && categorias.length > 1 && (
+        <section
+          className={`transition-all duration-500 ${
+            modoCompacto
+              ? 'sticky top-20 z-20 bg-white/80 backdrop-blur-xl border-y border-gray-200 shadow-sm py-2'
+              : 'max-w-6xl mx-auto px-4 mb-12 py-8'
           }`}
         >
-          {categorias.map((cat) => (
-            <button
-              key={cat.nombre}
-              onClick={() => setCategoriaActiva(cat.nombre)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-full font-semibold transition-all ${
-                categoriaActiva === cat.nombre
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-blue-50'
-              } ${modoCompacto ? 'text-sm px-3 py-2' : ''}`}
-            >
-              <span>{cat.icono}</span>
-              {!modoCompacto && cat.nombre}
-            </button>
-          ))}
-        </div>
-      </section>
+          <div
+            className={`flex flex-wrap justify-center gap-3 ${
+              modoCompacto ? 'overflow-x-auto scrollbar-hide px-2' : ''
+            }`}
+          >
+            {categorias.map((cat) => (
+              <button
+                key={cat.nombre}
+                onClick={() => setCategoriaActiva(cat.nombre)}
+                className={`flex items-center gap-2 px-5 py-3 rounded-full font-semibold transition-all ${
+                  categoriaActiva === cat.nombre
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-blue-50'
+                } ${modoCompacto ? 'text-sm px-3 py-2' : ''}`}
+              >
+                <span>{cat.icono}</span>
+                {!modoCompacto && cat.nombre}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Resultados */}
       <section className="max-w-7xl mx-auto px-4 mt-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-black text-gray-900">Técnicos Disponibles</h2>
-          <p className="text-gray-600 font-medium">Mostrando {resultados.length} resultados</p>
+          {!loading && (
+            <p className="text-gray-600 font-medium">
+              Mostrando {resultados.length} {resultados.length === 1 ? 'resultado' : 'resultados'}
+            </p>
+          )}
         </div>
 
-        {resultados.length > 0 ? (
-          <div className={`grid ${vistaGrid ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-8`}>
-            {resultados.map((t, idx) => (
-              <div key={t.id} className="animate-fade-in-up" style={{ animationDelay: `${idx * 100}ms` }}>
-                <TecnicoCard tecnico={t} />
-              </div>
-            ))}
+        {/* Estado de carga */}
+        {loading && (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+            <span className="ml-4 text-lg text-gray-600">Cargando técnicos...</span>
           </div>
-        ) : (
-          <p className="text-center text-gray-500 mt-12 text-lg">No se encontraron técnicos.</p>
+        )}
+
+        {/* Mensaje de error */}
+        {error && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 mb-8">
+            <div className="flex items-center justify-center">
+              <div className="text-yellow-600 text-lg">
+                ⚠️ {error}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Grid de técnicos */}
+        {!loading && !error && resultados.length > 0 && (
+          <div className={`grid ${vistaGrid ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-8 auto-rows-fr`}>
+            {resultados.map((t, idx) => {
+              // ✅ Convertir precios para mostrar correctamente
+              const precioMinNum = parsePrecio(t.precioMin)
+              const tienePrecioMin = precioMinNum !== null
+              
+              return (
+                <div 
+                  key={t.id} 
+                  className="animate-fade-in-up h-full" 
+                  style={{ animationDelay: `${idx * 100}ms` }}
+                >
+                  <div className="h-full">
+                    <TecnicoCard tecnico={{
+                      id: t.id,
+                      nombre: `${t.nombres || ''} ${t.apellidos || ''}`.trim() || t.user.nombre,
+                      oficio: t.oficio || 'Técnico',
+                      estrellas: parseFloat(t.calificacionPromedio.toString()) || 0,
+                      imagen: t.user.avatarUrl || "/images/olivis.jpg",
+                      descripcion: t.descripcion || 'Profesional con experiencia en el rubro',
+                      // ✅ Pasando los nuevos campos
+                      precioMin: t.precioMin,
+                      precioMax: t.precioMax,
+                      experienciaAnios: t.experienciaAnios,
+                      trabajosCompletados: t.trabajosCompletados,
+                      calificacionPromedio: t.calificacionPromedio
+                    }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Sin resultados */}
+        {!loading && !error && resultados.length === 0 && (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-6">🔍</div>
+            <p className="text-gray-500 text-xl mb-4">
+              {busqueda || categoriaActiva !== "Todos" 
+                ? "No se encontraron técnicos que coincidan con tu búsqueda"
+                : "No hay técnicos disponibles en este momento"
+              }
+            </p>
+            {(busqueda || categoriaActiva !== "Todos") && (
+              <button
+                onClick={limpiarBusqueda}
+                className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         )}
       </section>
     </main>

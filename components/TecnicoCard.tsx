@@ -6,31 +6,75 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 interface Tecnico {
-  id: number
+  id: string | number
   nombre: string
   oficio: string
   estrellas: number
   imagen: string
   descripcion: string
+  precioMin?: number | string
+  precioMax?: number | string// ✅ Agregar precioMax también
+  experienciaAnios?: number
+  trabajosCompletados?: number
+  calificacionPromedio?: number
 }
 
 export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
-  const { id, nombre, oficio, estrellas, imagen, descripcion } = tecnico
+  const { 
+    id, 
+    nombre, 
+    oficio, 
+    estrellas, 
+    imagen, 
+    descripcion,
+    precioMin,
+    precioMax,
+    experienciaAnios,
+    trabajosCompletados,
+    calificacionPromedio
+  } = tecnico
+  
   const [isFavorite, setIsFavorite] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const router = useRouter()
 
-  const handleChatear = () => {
+  // ✅ Asegurar que todos los valores sean números
+  const trabajos = typeof trabajosCompletados === 'number' ? trabajosCompletados : 127
+  const experiencia = typeof experienciaAnios === 'number' ? experienciaAnios : 5
+  
+  // ✅ CORRECCIÓN: Usar precioMin real con valor por defecto
+  const precioMinReal = typeof precioMin === 'number' ? precioMin : 80
+  const precioMaxReal = typeof precioMax === 'number' ? precioMax : 150
+  
+  // ✅ CORRECCIÓN: Asegurar que ratingReal sea siempre un número
+  const ratingReal = typeof calificacionPromedio === 'number' 
+    ? calificacionPromedio 
+    : typeof estrellas === 'number' 
+      ? estrellas 
+      : 4.5
+
+  const handleChatear = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     router.push('/Chat')
   }
 
-  const handleLlamar = () => {
+  const handleLlamar = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     window.location.href = `tel:+51902608436`
   }
 
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsFavorite(!isFavorite)
+  }
+
   const renderEstrellas = (rating: number) => {
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 >= 0.5
+    const safeRating = typeof rating === 'number' && !isNaN(rating) ? rating : 4.5
+    const fullStars = Math.floor(safeRating)
+    const hasHalfStar = safeRating % 1 >= 0.5
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0)
 
     return (
@@ -56,23 +100,29 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
         ))}
-        <span className="ml-1.5 text-sm font-bold text-gray-800">{estrellas}</span>
+        <span className="ml-1.5 text-sm font-bold text-gray-800">
+          {safeRating.toFixed(1)}
+        </span>
       </div>
     )
   }
 
+  const calcularSatisfaccion = () => {
+    const safeRating = typeof ratingReal === 'number' && !isNaN(ratingReal) ? ratingReal : 4.5
+    return Math.min(100, Math.round((safeRating / 5) * 100))
+  }
+
   return (
-    <div 
-      className="group relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100"
+    <Link 
+      href={`/Tecnicos/${id}`}
+      className="group relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 h-full flex flex-col block"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Glow effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500"></div>
       
-      <div className="relative">
-        {/* Imagen con efectos */}
-        <div className="relative h-72 overflow-hidden rounded-t-3xl">
+      <div className="relative flex flex-col h-full">
+        <div className="relative h-64 flex-shrink-0 overflow-hidden rounded-t-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-indigo-600/20 z-10"></div>
           <Image
             src={imagen}
@@ -83,15 +133,12 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
             }`}
           />
           
-          {/* Overlay gradient animado */}
           <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-500 ${
             isHovered ? 'opacity-100' : 'opacity-60'
           }`}></div>
 
-          {/* Badges superiores */}
           <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-20">
             <div className="flex flex-col gap-2">
-              {/* Badge verificado */}
               <div className="inline-flex items-center gap-1.5 bg-green-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -99,16 +146,18 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
                 Verificado
               </div>
 
-              {/* Badge disponible */}
-              <div className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md text-green-600 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Disponible
-              </div>
+              {experiencia > 0 && (
+                <div className="inline-flex items-center gap-1.5 bg-blue-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {experiencia}+ años
+                </div>
+              )}
             </div>
 
-            {/* Botón favorito */}
             <button
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={handleFavoriteClick}
               className="bg-white/90 backdrop-blur-md p-2.5 rounded-full shadow-lg hover:scale-110 transition-all duration-300"
             >
               <svg 
@@ -123,33 +172,29 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
             </button>
           </div>
 
-          {/* Info sobre la imagen */}
           <div className="absolute bottom-4 left-4 right-4 z-20">
             <div className="bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl transform transition-all duration-500">
-              <h3 className="text-xl font-black text-gray-900 mb-1">
+              <h3 className="text-xl font-black text-gray-900 mb-1 truncate">
                 {nombre}
               </h3>
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white truncate max-w-[60%]">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  {oficio}
+                  <span className="truncate">{oficio || 'Técnico'}</span>
                 </span>
-                {renderEstrellas(estrellas)}
+                {renderEstrellas(ratingReal)}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Contenido */}
-        <div className="p-6">
-          {/* Descripción */}
-          <p className="text-gray-600 text-sm leading-relaxed mb-6">
-            {descripcion}
+        <div className="p-6 flex flex-col flex-grow">
+          <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-2 min-h-[2.5rem]">
+            {descripcion || 'Profesional con experiencia en el rubro'}
           </p>
 
-          {/* Stats mejorados */}
           <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-100">
             <div className="text-center group/stat cursor-pointer">
               <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center group-hover/stat:scale-110 transition-transform">
@@ -157,7 +202,7 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <div className="text-xl font-black text-gray-800">127</div>
+              <div className="text-xl font-black text-gray-800">{trabajos}</div>
               <div className="text-xs text-gray-500 font-medium">Trabajos</div>
             </div>
 
@@ -167,7 +212,7 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                 </svg>
               </div>
-              <div className="text-xl font-black text-gray-800">98%</div>
+              <div className="text-xl font-black text-gray-800">{calcularSatisfaccion()}%</div>
               <div className="text-xs text-gray-500 font-medium">Satisfacción</div>
             </div>
 
@@ -177,12 +222,11 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div className="text-xl font-black text-gray-800">5</div>
+              <div className="text-xl font-black text-gray-800">{experiencia}</div>
               <div className="text-xs text-gray-500 font-medium">Años exp.</div>
             </div>
           </div>
 
-          {/* Habilidades destacadas */}
           <div className="mb-6">
             <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold">
@@ -197,12 +241,12 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
             </div>
           </div>
 
-          {/* Precio estimado */}
+          {/* ✅ CORRECCIÓN: Mostrar precioMin real */}
           <div className="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl border border-yellow-200">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs text-gray-600 font-medium mb-1">Desde</div>
-                <div className="text-2xl font-black text-gray-900">S/ 80</div>
+                <div className="text-2xl font-black text-gray-900">S/ {precioMin}</div>
               </div>
               <div className="text-right">
                 <div className="text-xs text-gray-600 font-medium mb-1">Por servicio</div>
@@ -211,20 +255,13 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
             </div>
           </div>
 
-          {/* Botones de acción */}
-          <div className="grid grid-cols-5 gap-3">
-            <Link 
-              href={`/Tecnicos/${id}`}
-              className="col-span-3 group/btn relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-2xl font-bold text-sm overflow-hidden hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover/btn:opacity-100 transition-opacity"></div>
-              <span className="relative flex items-center justify-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Ver Perfil
-              </span>
-            </Link>
+          <div className="grid grid-cols-5 gap-3 mt-auto">
+            <div className="col-span-3 group/btn relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-2xl font-bold text-sm overflow-hidden hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Ver Perfil
+            </div>
             
             <button 
               onClick={handleChatear}
@@ -248,9 +285,8 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
           </div>
         </div>
 
-        {/* Badge de respuesta rápida */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
       </div>
-    </div>
+    </Link>
   )
 }

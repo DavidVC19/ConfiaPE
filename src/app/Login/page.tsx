@@ -7,7 +7,7 @@ import { login as loginApi, getRedirectPathByRole, saveSession } from "../../lib
 
 export default function LoginPage() {
   const [mostrarPassword, setMostrarPassword] = useState(false)
-  const [tipoUsuario, setTipoUsuario] = useState<'cliente' | 'tecnico' | 'admin'>('cliente')
+  const [tipoUsuario, setTipoUsuario] = useState<'cliente' | 'tecnico'>('cliente')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [recordarme, setRecordarme] = useState(false)
@@ -23,7 +23,6 @@ export default function LoginPage() {
       const roleMap = {
         'cliente': 'CLIENTE',
         'tecnico': 'TECNICO',
-        'admin': 'ADMIN',
       } as const
       const { user, tokens } = await loginApi(email, password, roleMap[tipoUsuario])
       // Si no desea recordar, no persistimos refreshToken
@@ -78,16 +77,6 @@ export default function LoginPage() {
               }`}
             >
               Técnico
-            </button>
-            <button
-              onClick={() => setTipoUsuario('admin')}
-              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                tipoUsuario === 'admin'
-                  ? 'bg-white text-blue-600 shadow-md'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Admin
             </button>
           </div>
 

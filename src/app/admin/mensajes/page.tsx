@@ -149,7 +149,8 @@ export default function MensajesPage() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8">
+        {/* 👇 CAMBIO CLAVE APLICADO AQUÍ */}
+        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-64 transition-all duration-300">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">

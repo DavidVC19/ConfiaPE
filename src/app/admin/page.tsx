@@ -151,8 +151,8 @@ export default function AdminDashboard() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        {/* Contenido principal */}
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8">
+        {/* Contenido principal - CON MARGIN LEFT EN DESKTOP */}
+        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-64 transition-all duration-300">
           <div className="max-w-7xl mx-auto">
             {/* Header del dashboard */}
             <div className="mb-8">

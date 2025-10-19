@@ -5,12 +5,49 @@ import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import TecnicoCard from "@/components/TecnicoCard"
 import Link from "next/link"
-import { useRouter } from 'next/navigation' 
+import { useRouter } from 'next/navigation'
+
+// Tipos para los técnicos
+interface Tecnico {
+  id: string
+  nombres: string
+  apellidos: string
+  oficio: string
+  descripcion: string
+  ubicacion: string
+  calificacionPromedio: number
+  trabajosCompletados: number
+  precioMin: number
+  precioMax: number
+  experienciaAnios: number
+  verificado: boolean
+  disponible: boolean
+  user?: { // ✅ Hacer user opcional
+    nombre: string
+    avatarUrl: string | null
+  }
+  _count: {
+    reviews: number
+  }
+}
+
+interface TecnicosResponse {
+  data: Tecnico[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    pages: number
+  }
+}
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false)
   const [activeService, setActiveService] = useState(0)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setIsVisible(true)
@@ -23,39 +60,66 @@ export default function Home() {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
+  // Cargar técnicos desde la API
+  useEffect(() => {
+    const cargarTecnicos = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const response = await fetch('http://localhost:5000/api/tecnicos', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`)
+        }
+        
+        const result = await response.json()
+        
+        console.log('Respuesta completa de la API:', result)
+        
+        // Tu API devuelve: { success: true, data: { data: [...], pagination: {...} } }
+        let tecnicos: Tecnico[] = []
+        
+        if (result.success && result.data && Array.isArray(result.data.data)) {
+          tecnicos = result.data.data
+        } else if (Array.isArray(result.data)) {
+          tecnicos = result.data
+        } else if (Array.isArray(result)) {
+          tecnicos = result
+        } else {
+          console.error('Formato de respuesta inesperado:', result)
+          throw new Error('Formato de respuesta inválido')
+        }
+        
+        // ✅ Filtrar solo técnicos disponibles Y que tengan user, limitar a 6
+        const tecnicosFiltrados = tecnicos
+          .filter((tecnico: Tecnico) => tecnico.disponible && tecnico.user) // ✅ Solo técnicos con user
+          .slice(0, 6)
+        
+        setTecnicos(tecnicosFiltrados)
+      } catch (err) {
+        console.error('Error al cargar técnicos:', err)
+        setError('No se pudieron cargar los técnicos. Por favor, intenta de nuevo.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    cargarTecnicos()
+  }, [])
+
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveService((prev) => (prev + 1) % servicios.length)
     }, 3000)
     return () => clearInterval(interval)
   }, [])
-
-  const tecnicos = [
-    {
-      id: 1,
-      nombre: "Carlos Martínez",
-      oficio: "Electricista",
-      estrellas: 4.8,
-      imagen: "/images/olivis.jpg",
-      descripcion: "Especialista en instalaciones eléctricas y mantenimiento residencial.",
-    },
-    {
-      id: 2,
-      nombre: "Laura Gómez",
-      oficio: "Fontanera",
-      estrellas: 4.6,
-      imagen: "/images/olivis.jpg",
-      descripcion: "Experta en reparación de fugas y sistemas de agua.",
-    },
-    {
-      id: 3,
-      nombre: "José Ramírez",
-      oficio: "Técnico en aire acondicionado",
-      estrellas: 4.9,
-      imagen: "/images/olivis.jpg",
-      descripcion: "Instalación y mantenimiento de equipos de refrigeración.",
-    },
-  ]
 
   const servicios = [
     { 
@@ -101,11 +165,11 @@ export default function Home() {
       bgColor: "bg-gray-500/10"
     },
   ]
+
   const router = useRouter() 
   
   const [busqueda, setBusqueda] = useState("")
-  const [resultados, setResultados] = useState(tecnicos)
-    const handleBuscar = () => {
+  const handleBuscar = () => {
     const query = busqueda.trim()
     if (query !== "") {
       router.push(`/Tecnicos?search=${encodeURIComponent(query)}`)
@@ -113,6 +177,7 @@ export default function Home() {
       router.push("/Tecnicos")
     }
   }
+
   const beneficios = [
     {
       icono: "🛡️",
@@ -166,8 +231,6 @@ export default function Home() {
 
           <div className={`relative max-w-7xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className="text-center mb-12">
-              
-
               <h1 className="text-6xl md:text-8xl font-black mb-8 leading-tight">
                 <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
                   Encuentra Técnicos
@@ -187,9 +250,21 @@ export default function Home() {
               {/* Estadísticas animadas */}
               <div className="flex flex-wrap justify-center gap-8 mb-16">
                 {[
-                  { num: "500+", label: "Técnicos", color: "text-blue-600" },
-                  { num: "10K+", label: "Servicios", color: "text-indigo-600" },
-                  { num: "4.8★", label: "Rating", color: "text-purple-600" }
+                  { 
+                    num: loading ? "..." : `${tecnicos.length}+`, 
+                    label: "Técnicos Disponibles", 
+                    color: "text-blue-600" 
+                  },
+                  { 
+                    num: loading ? "..." : tecnicos.length > 0 ? `${Math.round(tecnicos.reduce((acc, t) => acc + t.trabajosCompletados, 0) / tecnicos.length)}K+` : "0", 
+                    label: "Servicios Promedio", 
+                    color: "text-indigo-600" 
+                  },
+                  { 
+                    num: loading ? "..." : tecnicos.length > 0 ? `${(tecnicos.reduce((acc, t) => acc + t.calificacionPromedio, 0) / tecnicos.length).toFixed(1)}★` : "5.0★", 
+                    label: "Rating Promedio", 
+                    color: "text-purple-600" 
+                  }
                 ].map((stat, idx) => (
                   <div key={idx} className="group cursor-pointer">
                     <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
@@ -202,81 +277,78 @@ export default function Home() {
                 ))}
               </div>
 
-{/* Buscador Ultra Moderno */}
-<div className="max-w-4xl mx-auto">
-  <div className="relative group">
-    {/* Efecto de halo brillante */}
-    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl blur-xl opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+              {/* Buscador Ultra Moderno */}
+              <div className="max-w-4xl mx-auto">
+                <div className="relative group">
+                  {/* Efecto de halo brillante */}
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl blur-xl opacity-25 group-hover:opacity-40 transition duration-1000"></div>
 
-    {/* Contenedor principal del buscador */}
-    <div className="relative bg-white rounded-3xl shadow-2xl p-3 border border-gray-100">
-      <div className="flex items-center gap-3">
-        {/* Campo de búsqueda */}
-        <div className="relative flex-grow">
-          <svg
-            className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+                  {/* Contenedor principal del buscador */}
+                  <div className="relative bg-white rounded-3xl shadow-2xl p-3 border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      {/* Campo de búsqueda */}
+                      <div className="relative flex-grow">
+                        <svg
+                          className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
 
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
-            placeholder="¿Qué servicio necesitas? Ej: electricista, fontanero, pintor..."
-            className="w-full pl-14 pr-12 py-5 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 text-gray-800 text-lg bg-gray-50 border-2 border-transparent focus:border-blue-500 transition-all"
-          />
+                        <input
+                          type="text"
+                          value={busqueda}
+                          onChange={(e) => setBusqueda(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
+                          placeholder="¿Qué servicio necesitas? Ej: electricista, fontanero, pintor..."
+                          className="w-full pl-14 pr-12 py-5 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 text-gray-800 text-lg bg-gray-50 border-2 border-transparent focus:border-blue-500 transition-all"
+                        />
 
-          {/* Botón para limpiar texto (la X) */}
-          {busqueda && (
-            <button
-              onClick={() => setBusqueda('')}
-              className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-2xl leading-none"
-            >
-              ×
-            </button>
-          )}
-        </div>
+                        {/* Botón para limpiar texto (la X) */}
+                        {busqueda && (
+                          <button
+                            onClick={() => setBusqueda('')}
+                            className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
 
-        {/* Botón de búsqueda */}
-        <button
-          onClick={handleBuscar}
-          className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-5 rounded-2xl font-bold text-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl flex items-center justify-center"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <span className="relative flex items-center gap-3">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            Buscar
-          </span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-
+                      {/* Botón de búsqueda */}
+                      <button
+                        onClick={handleBuscar}
+                        className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-5 rounded-2xl font-bold text-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl flex items-center justify-center"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <span className="relative flex items-center gap-3">
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                          </svg>
+                          Buscar
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -364,17 +436,66 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {resultados.map((t, idx) => (
-                <div
-                  key={t.id}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${idx * 150}ms` }}
-                >
-                  <TecnicoCard tecnico={t} />
+            {/* Estado de carga */}
+            {loading && (
+              <div className="flex justify-center items-center py-20">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+                <span className="ml-4 text-lg text-gray-600">Cargando técnicos...</span>
+              </div>
+            )}
+
+            {/* Mensaje de error */}
+            {error && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 mb-8">
+                <div className="flex items-center justify-center">
+                  <div className="text-yellow-600 text-lg">
+                    ⚠️ {error}
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Grid de técnicos */}
+            {!loading && tecnicos.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 auto-rows-fr">
+{tecnicos.map((t, idx) => (
+  <div
+    key={t.id}
+    className="animate-fade-in-up h-full"
+    style={{ animationDelay: `${idx * 150}ms` }}
+  >
+    <div className="h-full">
+      <TecnicoCard tecnico={{
+        id: t.id,
+        nombre: `${t.nombres} ${t.apellidos}`,
+        oficio: t.oficio,
+        estrellas: t.calificacionPromedio,
+        imagen: t.user?.avatarUrl || "/images/olivis.jpg",
+        descripcion: t.descripcion,
+        // ✅ Pasando todos los campos de precios
+        precioMin: t.precioMin,
+        precioMax: t.precioMax, // ✅ Agregar precioMax también
+        experienciaAnios: t.experienciaAnios,
+        trabajosCompletados: t.trabajosCompletados,
+        calificacionPromedio: t.calificacionPromedio
+      }} />
+    </div>
+  </div>
+))}
+              </div>
+            )}
+
+            {/* Mensaje si no hay técnicos */}
+            {!loading && !error && tecnicos.length === 0 && (
+              <div className="text-center py-20">
+                <div className="text-gray-500 text-xl mb-4">
+                  🔍 No hay técnicos disponibles en este momento
+                </div>
+                <p className="text-gray-400">
+                  Pronto tendremos más profesionales verificados disponibles
+                </p>
+              </div>
+            )}
 
             <div className="text-center mt-12">
               <Link

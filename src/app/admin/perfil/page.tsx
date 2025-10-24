@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
 import AdminSidebar from "@/components/admincomponents/AdminSidebar"
-import { getStoredUser, me } from "../../../lib/auth"
+import { getStoredUser, me, getAccessToken } from "../../../lib/auth"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface TecnicoProfile {
   nombres: string
@@ -18,6 +19,15 @@ interface TecnicoProfile {
   precioMax?: number
 }
 
+interface Certificado {
+  id: string
+  nombre: string
+  institucion: string | null
+  imagenUrl: string
+  fechaObtencion: string | null
+  createdAt: string
+}
+
 const notifications = [
   {
     id: 1,
@@ -29,6 +39,8 @@ const notifications = [
   }
 ]
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
 export default function PerfilPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -38,9 +50,17 @@ export default function PerfilPage() {
   const [tecnicoData, setTecnicoData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingCertificado, setUploadingCertificado] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [certificados, setCertificados] = useState<Certificado[]>([])
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [certificadoPreview, setCertificadoPreview] = useState<string | null>(null)
   const router = useRouter()
+
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const certificadoInputRef = useRef<HTMLInputElement>(null)
 
   // Form data
   const [formData, setFormData] = useState<TecnicoProfile>({
@@ -61,20 +81,20 @@ export default function PerfilPage() {
       try {
         setLoading(true)
         setError(null)
-        
+
         // Obtener datos del usuario autenticado
         const userData = await me()
         setUser(userData)
 
         // Obtener token de autenticación
-        const token = localStorage.getItem('accessToken')
-        
+        const token = getAccessToken()
+
         if (!token) {
           throw new Error('No hay sesión activa')
         }
 
         // Cargar datos del técnico desde la API
-        const response = await fetch('http://localhost:5000/api/tecnicos/me', {
+        const response = await fetch(`${API_URL}/api/tecnicos/me`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -91,9 +111,14 @@ export default function PerfilPage() {
 
         const result = await response.json()
         const tecnico = result.success ? result.data : result
-        
+
         setTecnicoData(tecnico)
-        
+
+        // Cargar certificados si existen
+        if (tecnico.certificados) {
+          setCertificados(tecnico.certificados)
+        }
+
         // Inicializar formulario con datos actuales
         setFormData({
           nombres: tecnico.nombres || '',
@@ -126,12 +151,167 @@ export default function PerfilPage() {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024)
     }
-    
+
     checkMobile()
     window.addEventListener('resize', checkMobile)
-    
+
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      setError('Solo se permiten archivos de imagen')
+      return
+    }
+
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('La imagen no debe superar los 5MB')
+      return
+    }
+
+    // Mostrar preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Subir avatar
+    await handleAvatarUpload(file)
+  }
+
+  const handleAvatarUpload = async (file: File) => {
+    try {
+      setUploadingAvatar(true)
+      setError(null)
+
+      const token = getAccessToken()
+      if (!token) {
+        throw new Error('No hay sesión activa')
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch(`${API_URL}/api/auth/me/avatar`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al subir el avatar')
+      }
+
+      const result = await response.json()
+      const updatedUser = result.success ? result.data.user : result.user
+
+      // Actualizar usuario en estado
+      setUser((prev: any) => ({ ...prev, avatarUrl: updatedUser.avatarUrl }))
+      setSuccessMessage('✅ Avatar actualizado exitosamente')
+
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => setSuccessMessage(null), 3000)
+
+    } catch (err: any) {
+      console.error('Error subiendo avatar:', err)
+      setError(err?.message || 'Error al subir el avatar')
+      setAvatarPreview(null)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleCertificadoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      setError('Solo se permiten archivos de imagen')
+      return
+    }
+
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('La imagen no debe superar los 5MB')
+      return
+    }
+
+    // Mostrar preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setCertificadoPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Solicitar nombre del certificado
+    const nombre = prompt('Nombre del certificado:')
+    if (!nombre) {
+      setCertificadoPreview(null)
+      return
+    }
+
+    const institucion = prompt('Institución (opcional):')
+
+    await handleCertificadoUpload(file, nombre, institucion || '')
+  }
+
+  const handleCertificadoUpload = async (file: File, nombre: string, institucion: string) => {
+    try {
+      setUploadingCertificado(true)
+      setError(null)
+
+      const token = getAccessToken()
+      if (!token) {
+        throw new Error('No hay sesión activa')
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('nombre', nombre)
+      if (institucion) formData.append('institucion', institucion)
+
+      const response = await fetch(`${API_URL}/api/tecnicos/me/certificados`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al subir el certificado')
+      }
+
+      const result = await response.json()
+      const nuevoCertificado = result.success ? result.data : result
+
+      // Actualizar lista de certificados
+      setCertificados(prev => [...prev, nuevoCertificado])
+      setSuccessMessage('✅ Certificado agregado exitosamente')
+      setCertificadoPreview(null)
+
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => setSuccessMessage(null), 3000)
+
+    } catch (err: any) {
+      console.error('Error subiendo certificado:', err)
+      setError(err?.message || 'Error al subir el certificado')
+      setCertificadoPreview(null)
+    } finally {
+      setUploadingCertificado(false)
+    }
+  }
 
   const handleGuardar = async () => {
     try {
@@ -147,8 +327,8 @@ export default function PerfilPage() {
       }
 
       // Obtener token
-      const token = localStorage.getItem('accessToken')
-      
+      const token = getAccessToken()
+
       if (!token) {
         setError('No hay sesión activa. Por favor, inicia sesión nuevamente.')
         router.push('/Login')
@@ -192,7 +372,7 @@ export default function PerfilPage() {
 
       console.log('Enviando datos:', dataToSend)
 
-      const response = await fetch('http://localhost:5000/api/tecnicos/me', {
+      const response = await fetch(`${API_URL}/api/tecnicos/me`, {
         method: 'PUT',
         headers: {
           'Accept': 'application/json',
@@ -215,7 +395,7 @@ export default function PerfilPage() {
       // Actualizar datos locales
       const updatedTecnico = result.success ? result.data : result
       setTecnicoData(updatedTecnico)
-      
+
       // Actualizar formData con los nuevos datos guardados
       setFormData({
         nombres: updatedTecnico.nombres || '',
@@ -228,10 +408,10 @@ export default function PerfilPage() {
         precioMin: updatedTecnico.precioMin ? parseFloat(updatedTecnico.precioMin) : 0,
         precioMax: updatedTecnico.precioMax ? parseFloat(updatedTecnico.precioMax) : 0
       })
-      
+
       setSuccessMessage('✅ Perfil actualizado exitosamente')
       setEditando(false)
-      
+
       // Cerrar sidebar en móvil después de guardar
       if (isMobile) {
         setSidebarOpen(false)
@@ -252,7 +432,7 @@ export default function PerfilPage() {
     setEditando(false)
     setError(null)
     setSuccessMessage(null)
-    
+
     // Restaurar datos originales
     if (tecnicoData) {
       setFormData({
@@ -292,7 +472,7 @@ export default function PerfilPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">No se pudo cargar el perfil</p>
-          <button 
+          <button
             onClick={() => router.push('/Login')}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
           >
@@ -304,33 +484,22 @@ export default function PerfilPage() {
   }
 
   const nombreCompleto = `${formData.nombres} ${formData.apellidos}`.trim()
-  const iniciales = nombreCompleto ? nombreCompleto.charAt(0).toUpperCase() : 'U'
+  const iniciales = nombreCompleto ? nombreCompleto.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <HeaderAdmin 
+      <HeaderAdmin
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
         user={user}
       />
 
-      <div className="flex relative">
-        <AdminSidebar 
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-
-        {/* Overlay para móvil */}
-        {sidebarOpen && isMobile && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+      <div className="flex">
+        <AdminSidebar />
 
         {/* Contenido principal con margen para el sidebar */}
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-64 transition-all duration-300">
+        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-6 lg:mb-8 px-2">
@@ -355,14 +524,50 @@ export default function PerfilPage() {
               </div>
             )}
 
-            {/* Información principal */}
+            {/* Avatar y Información principal */}
             <div className="bg-white rounded-2xl lg:rounded-3xl shadow-lg lg:shadow-xl p-4 sm:p-6 lg:p-8 mb-6 lg:mb-8 border border-gray-100">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6 lg:mb-8 gap-4">
                 <div className="flex items-center gap-4 sm:gap-6">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl lg:rounded-3xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-bold text-lg sm:text-xl lg:text-2xl">
-                      {iniciales}
-                    </span>
+                  {/* Avatar con opción de subir */}
+                  <div className="relative group">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl lg:rounded-3xl overflow-hidden flex-shrink-0">
+                      {avatarPreview || user.avatarUrl ? (
+                        <img
+                          src={avatarPreview || user.avatarUrl}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg sm:text-xl lg:text-2xl">
+                            {iniciales}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Botón para cambiar avatar */}
+                    <button
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all rounded-2xl lg:rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100"
+                    >
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 bg-black bg-opacity-50 rounded-2xl lg:rounded-3xl flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 truncate">
@@ -571,6 +776,57 @@ export default function PerfilPage() {
               )}
             </div>
 
+            {/* Certificados */}
+            <div className="bg-white rounded-2xl lg:rounded-3xl shadow-lg lg:shadow-xl p-4 sm:p-6 lg:p-8 mb-6 lg:mb-8 border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg sm:text-xl font-black text-gray-900">Certificados</h3>
+                <button
+                  onClick={() => certificadoInputRef.current?.click()}
+                  disabled={uploadingCertificado}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl font-semibold hover:scale-105 transition-all shadow-lg text-sm disabled:opacity-50"
+                >
+                  {uploadingCertificado ? 'Subiendo...' : '+ Agregar Certificado'}
+                </button>
+                <input
+                  ref={certificadoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCertificadoChange}
+                  className="hidden"
+                />
+              </div>
+
+              {certificados.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {certificados.map((cert) => (
+                    <div key={cert.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
+                      <div className="aspect-video bg-gray-100 rounded-lg mb-3 overflow-hidden">
+                        <img
+                          src={cert.imagenUrl}
+                          alt={cert.nombre}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <h4 className="font-bold text-gray-900 mb-1">{cert.nombre}</h4>
+                      {cert.institucion && (
+                        <p className="text-sm text-gray-600 mb-2">{cert.institucion}</p>
+                      )}
+                      {cert.fechaObtencion && (
+                        <p className="text-xs text-gray-500">
+                          {new Date(cert.fechaObtencion).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No tienes certificados aún</p>
+                  <p className="text-sm mt-2">Haz clic en "Agregar Certificado" para subir uno</p>
+                </div>
+              )}
+            </div>
+
             {/* Estadísticas del perfil */}
             <div className="bg-white rounded-2xl lg:rounded-3xl shadow-lg lg:shadow-xl p-4 sm:p-6 border border-gray-100">
               <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-4 sm:mb-6">Estadísticas del Perfil</h3>
@@ -595,9 +851,9 @@ export default function PerfilPage() {
                 </div>
                 <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-xl lg:rounded-2xl">
                   <p className="text-xl sm:text-2xl font-black text-purple-900">
-                    {formData.experienciaAnios || 0}
+                    {certificados.length}
                   </p>
-                  <p className="text-xs sm:text-sm text-purple-600 font-medium">Años de Experiencia</p>
+                  <p className="text-xs sm:text-sm text-purple-600 font-medium">Certificados</p>
                 </div>
               </div>
             </div>

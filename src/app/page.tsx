@@ -66,8 +66,11 @@ export default function Home() {
       try {
         setLoading(true)
         setError(null)
-        
-        const response = await fetch('http://localhost:5000/api/tecnicos', {
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        console.log('Cargando técnicos desde:', `${apiUrl}/api/tecnicos`)
+
+        const response = await fetch(`${apiUrl}/api/tecnicos`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -97,10 +100,11 @@ export default function Home() {
           throw new Error('Formato de respuesta inválido')
         }
         
-        // ✅ Filtrar solo técnicos disponibles Y que tengan user, limitar a 6
+        // ✅ Filtrar solo técnicos disponibles Y que tengan user, ordenar por trabajosCompletados, limitar a 3
         const tecnicosFiltrados = tecnicos
           .filter((tecnico: Tecnico) => tecnico.disponible && tecnico.user) // ✅ Solo técnicos con user
-          .slice(0, 6)
+          .sort((a: Tecnico, b: Tecnico) => b.trabajosCompletados - a.trabajosCompletados) // Ordenar por trabajos completados descendente
+          .slice(0, 3) // Mostrar solo los 3 primeros
         
         setTecnicos(tecnicosFiltrados)
       } catch (err) {

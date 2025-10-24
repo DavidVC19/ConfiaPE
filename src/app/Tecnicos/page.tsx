@@ -49,74 +49,85 @@ function TecnicosContent() {
 
   const [busqueda, setBusqueda] = useState(searchFromURL)
   const [resultados, setResultados] = useState<Tecnico[]>([])
-  const [todosLosTecnicos, setTodosLosTecnicos] = useState<Tecnico[]>([])
   const [vistaGrid, setVistaGrid] = useState(true)
   const [categoriaActiva, setCategoriaActiva] = useState("Todos")
   const [modoCompacto, setModoCompacto] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const limit = 12
 
-  // Cargar técnicos desde la API
+  // Cargar técnicos desde la API con filtros
   useEffect(() => {
     const cargarTecnicos = async () => {
       try {
         setLoading(true)
         setError(null)
-        
-        const response = await fetch('http://localhost:5000/api/tecnicos', {
+
+        // Construir query params
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString(),
+          disponible: 'true'
+        })
+
+        // Agregar búsqueda si existe
+        if (busqueda.trim()) {
+          params.append('q', busqueda.trim())
+        }
+
+        // Agregar categoría si no es "Todos"
+        if (categoriaActiva !== "Todos") {
+          params.append('categoria', categoriaActiva)
+        }
+
+        const response = await fetch(`http://localhost:5000/api/tecnicos?${params}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           }
         })
-        
+
         if (!response.ok) {
           throw new Error(`Error ${response.status}: ${response.statusText}`)
         }
-        
+
         const result: TecnicosResponse = await response.json()
-        
+
         console.log('Respuesta completa de la API:', result)
-        
-        // Tu API devuelve: { success: true, data: { data: [...], pagination: {...} } }
-        let tecnicos: Tecnico[] = []
-        
-        if (result.success && result.data && Array.isArray(result.data.data)) {
-          tecnicos = result.data.data
-        } else if (Array.isArray(result.data)) {
-          tecnicos = result.data
-        } else if (Array.isArray(result)) {
-          tecnicos = result
+
+        if (result.success && result.data) {
+          setResultados(result.data.data || [])
+          setTotalPages(result.data.pagination.pages)
+          setTotal(result.data.pagination.total)
         } else {
           console.error('Formato de respuesta inesperado:', result)
           throw new Error('Formato de respuesta inválido')
         }
-        
-        // Filtrar solo técnicos disponibles
-        const tecnicosFiltrados = tecnicos.filter((tecnico: Tecnico) => tecnico.disponible)
-        
-        setTodosLosTecnicos(tecnicosFiltrados)
-        setResultados(tecnicosFiltrados)
       } catch (err) {
         console.error('Error al cargar técnicos:', err)
         setError('No se pudieron cargar los técnicos. Por favor, intenta de nuevo.')
+        setResultados([])
       } finally {
         setLoading(false)
       }
     }
 
     cargarTecnicos()
-  }, [])
+  }, [busqueda, categoriaActiva, page])
 
-  // Obtener categorías únicas de los técnicos
+  // Categorías predefinidas comunes en Perú
   const categorias = [
     { nombre: "Todos", icono: "⚙️" },
-    ...Array.from(new Set(todosLosTecnicos.map(t => t.oficio).filter(Boolean)))
-      .map(oficio => ({
-        nombre: oficio,
-        icono: getIconoOficio(oficio)
-      }))
+    { nombre: "electricista", icono: "⚡" },
+    { nombre: "fontanero", icono: "🔧" },
+    { nombre: "carpintero", icono: "🪚" },
+    { nombre: "pintor", icono: "🎨" },
+    { nombre: "cerrajero", icono: "🔑" },
+    { nombre: "aire acondicionado", icono: "❄️" },
   ]
 
   // Función para obtener icono según el oficio
@@ -150,40 +161,27 @@ function TecnicosContent() {
     return null
   }
 
-  // Filtrar resultados
+  // Efecto para modo compacto basado en búsqueda
   useEffect(() => {
-    let filtrados = todosLosTecnicos
+    setModoCompacto(busqueda.trim().length > 0)
+  }, [busqueda])
 
-    if (categoriaActiva !== "Todos") {
-      filtrados = filtrados.filter(t =>
-        t.oficio?.toLowerCase().includes(categoriaActiva.toLowerCase())
-      )
-    }
-
-    if (busqueda.trim()) {
-      filtrados = filtrados.filter(t =>
-        t.nombres?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        t.apellidos?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        t.oficio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        t.descripcion?.toLowerCase().includes(busqueda.toLowerCase())
-      )
-      setModoCompacto(true)
-    } else {
-      setModoCompacto(false)
-    }
-
-    setResultados(filtrados)
-  }, [busqueda, categoriaActiva, todosLosTecnicos])
-
+  // Efecto para search param de URL
   useEffect(() => {
     if (searchFromURL && !busqueda) {
       setBusqueda(searchFromURL)
     }
-  }, [searchFromURL])
+  }, [searchFromURL, busqueda])
 
   const limpiarBusqueda = () => {
     setBusqueda("")
     setCategoriaActiva("Todos")
+    setPage(1)
+  }
+
+  const handleCategoriaClick = (categoria: string) => {
+    setCategoriaActiva(categoria)
+    setPage(1) // Resetear a página 1 cuando cambia filtro
   }
 
   return (
@@ -245,7 +243,7 @@ function TecnicosContent() {
             {categorias.map((cat) => (
               <button
                 key={cat.nombre}
-                onClick={() => setCategoriaActiva(cat.nombre)}
+                onClick={() => handleCategoriaClick(cat.nombre)}
                 className={`flex items-center gap-2 px-5 py-3 rounded-full font-semibold transition-all ${
                   categoriaActiva === cat.nombre
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'

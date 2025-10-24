@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
 import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import { getStoredUser, getAccessToken } from "@/lib/auth"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
 const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const horarios = ['6:00', '7:00', '8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00']
@@ -48,6 +52,54 @@ export default function DisponibilidadPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [disponibilidad, setDisponibilidad] = useState<DisponibilidadState>(disponibilidadActual)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  // Cargar disponibilidad del técnico
+  useEffect(() => {
+    const loadDisponibilidad = async () => {
+      try {
+        setLoading(true)
+        const storedUser = getStoredUser()
+        if (!storedUser || storedUser.rol !== 'TECNICO') {
+          router.push('/Login')
+          return
+        }
+        setUser(storedUser)
+
+        const token = getAccessToken()
+        const response = await fetch(`${API_URL}/api/tecnicos/me/horarios`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        const data = await response.json()
+        if (data.success && data.data) {
+          // Convertir el array de horarios del backend al formato del estado
+          const horariosBackend = data.data
+          const newDisponibilidad: any = { ...disponibilidadActual }
+
+          horariosBackend.forEach((horario: any) => {
+            const diaKey = horario.dia.toLowerCase() as keyof DisponibilidadState
+            newDisponibilidad[diaKey] = {
+              inicio: horario.horaInicio,
+              fin: horario.horaFin,
+              disponible: horario.disponible
+            }
+          })
+
+          setDisponibilidad(newDisponibilidad)
+        }
+      } catch (error) {
+        console.error('Error cargando disponibilidad:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadDisponibilidad()
+  }, [router])
 
   const handleCambioDisponibilidad = (dia: keyof DisponibilidadState, campo: keyof ConfigDia, valor: string | boolean) => {
     setDisponibilidad(prev => ({
@@ -59,10 +111,37 @@ export default function DisponibilidadPage() {
     }))
   }
 
-  const guardarCambios = () => {
-    console.log('Guardando disponibilidad:', disponibilidad)
-    // Aquí se guardarían los cambios en el backend
-    alert('Cambios guardados exitosamente')
+  const guardarCambios = async () => {
+    try {
+      const token = getAccessToken()
+
+      // Convertir el estado al formato que espera el backend
+      const horariosArray = Object.entries(disponibilidad).map(([dia, config]) => ({
+        dia: dia.toUpperCase(),
+        horaInicio: config.inicio,
+        horaFin: config.fin,
+        disponible: config.disponible
+      }))
+
+      const response = await fetch(`${API_URL}/api/tecnicos/me/horarios`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ horarios: horariosArray })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        alert('Cambios guardados exitosamente')
+      } else {
+        alert('Error al guardar cambios')
+      }
+    } catch (error) {
+      console.error('Error guardando disponibilidad:', error)
+      alert('Error al guardar cambios')
+    }
   }
 
   const restablecerCambios = () => {
@@ -79,12 +158,9 @@ export default function DisponibilidadPage() {
       />
 
       <div className="flex">
-        <AdminSidebar 
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+        <AdminSidebar />
 
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-64 transition-all duration-300">
+        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">
@@ -96,8 +172,16 @@ export default function DisponibilidadPage() {
               </p>
             </div>
 
+            {loading && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Cargando disponibilidad...</p>
+              </div>
+            )}
+
             {/* Estado actual */}
-            <div className="bg-white rounded-3xl shadow-xl p-6 mb-8 border border-gray-100">
+            {!loading && (
+              <div className="bg-white rounded-3xl shadow-xl p-6 mb-8 border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-black text-gray-900">Estado Actual</h3>
                 <div className="flex items-center gap-2">
@@ -120,10 +204,12 @@ export default function DisponibilidadPage() {
                   <p className="text-xl font-black text-purple-900">6 días/semana</p>
                 </div>
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Configuración de horarios */}
-            <div className="bg-white rounded-3xl shadow-xl p-6 mb-8 border border-gray-100">
+            {!loading && (
+              <div className="bg-white rounded-3xl shadow-xl p-6 mb-8 border border-gray-100">
               <h3 className="text-xl font-black text-gray-900 mb-6">Configurar Horarios</h3>
               
               <div className="space-y-6">
@@ -193,10 +279,12 @@ export default function DisponibilidadPage() {
                   Restablecer
                 </button>
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Configuraciones adicionales */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {!loading && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
                 <h3 className="text-xl font-black text-gray-900 mb-6">Configuraciones Especiales</h3>
                 
@@ -269,7 +357,8 @@ export default function DisponibilidadPage() {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

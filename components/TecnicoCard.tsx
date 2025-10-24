@@ -2,8 +2,11 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { getAccessToken, getStoredUser } from "@/lib/auth"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
 interface Tecnico {
   id: string | number
@@ -13,30 +16,37 @@ interface Tecnico {
   imagen: string
   descripcion: string
   precioMin?: number | string
-  precioMax?: number | string// ✅ Agregar precioMax también
+  precioMax?: number | string
   experienciaAnios?: number
   trabajosCompletados?: number
   calificacionPromedio?: number
+  esFavorito?: boolean
 }
 
 export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
-  const { 
-    id, 
-    nombre, 
-    oficio, 
-    estrellas, 
-    imagen, 
+  const {
+    id,
+    nombre,
+    oficio,
+    estrellas,
+    imagen,
     descripcion,
     precioMin,
     precioMax,
     experienciaAnios,
     trabajosCompletados,
-    calificacionPromedio
+    calificacionPromedio,
+    esFavorito
   } = tecnico
-  
-  const [isFavorite, setIsFavorite] = useState(false)
+
+  const [isFavorite, setIsFavorite] = useState(esFavorito || false)
   const [isHovered, setIsHovered] = useState(false)
+  const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    setIsFavorite(esFavorito || false)
+  }, [esFavorito])
 
   // ✅ Asegurar que todos los valores sean números
   const trabajos = typeof trabajosCompletados === 'number' ? trabajosCompletados : 127
@@ -65,10 +75,64 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
     window.location.href = `tel:+51902608436`
   }
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsFavorite(!isFavorite)
+
+    const user = getStoredUser()
+    if (!user || user.rol !== 'CLIENTE') {
+      alert('Debes iniciar sesión como cliente para agregar favoritos')
+      router.push('/Login')
+      return
+    }
+
+    if (isUpdatingFavorite) return
+
+    try {
+      setIsUpdatingFavorite(true)
+      const token = getAccessToken()
+
+      if (isFavorite) {
+        // Eliminar de favoritos
+        const response = await fetch(`${API_URL}/api/favoritos/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (response.ok) {
+          setIsFavorite(false)
+        } else {
+          const error = await response.json()
+          console.error('Error al eliminar favorito:', error)
+          alert('Error al eliminar de favoritos')
+        }
+      } else {
+        // Agregar a favoritos
+        const response = await fetch(`${API_URL}/api/favoritos`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ tecnicoId: id })
+        })
+
+        if (response.ok) {
+          setIsFavorite(true)
+        } else {
+          const error = await response.json()
+          console.error('Error al agregar favorito:', error)
+          alert('Error al agregar a favoritos')
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al actualizar favoritos')
+    } finally {
+      setIsUpdatingFavorite(false)
+    }
   }
 
   const renderEstrellas = (rating: number) => {
@@ -124,14 +188,23 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
       <div className="relative flex flex-col h-full">
         <div className="relative h-64 flex-shrink-0 overflow-hidden rounded-t-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-indigo-600/20 z-10"></div>
-          <Image
-            src={imagen}
-            alt={nombre}
-            fill
-            className={`object-cover transition-all duration-700 ${
-              isHovered ? 'scale-110 rotate-2' : 'scale-100 rotate-0'
-            }`}
-          />
+          {imagen ? (
+            <Image
+              src={imagen}
+              alt={nombre}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className={`object-cover transition-all duration-700 ${
+                isHovered ? 'scale-110 rotate-2' : 'scale-100 rotate-0'
+              }`}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+              <div className="text-6xl font-black text-white">
+                {nombre?.charAt(0)?.toUpperCase() || 'T'}
+              </div>
+            </div>
+          )}
           
           <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-500 ${
             isHovered ? 'opacity-100' : 'opacity-60'
@@ -158,17 +231,22 @@ export default function TecnicoCard({ tecnico }: { tecnico: Tecnico }) {
 
             <button
               onClick={handleFavoriteClick}
-              className="bg-white/90 backdrop-blur-md p-2.5 rounded-full shadow-lg hover:scale-110 transition-all duration-300"
+              disabled={isUpdatingFavorite}
+              className="bg-white/90 backdrop-blur-md p-2.5 rounded-full shadow-lg hover:scale-110 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg 
-                className={`w-5 h-5 transition-colors ${
-                  isFavorite ? 'fill-red-500 text-red-500' : 'fill-none text-gray-700'
-                }`}
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
+              {isUpdatingFavorite ? (
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+              ) : (
+                <svg
+                  className={`w-5 h-5 transition-colors ${
+                    isFavorite ? 'fill-red-500 text-red-500' : 'fill-none text-gray-700'
+                  }`}
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              )}
             </button>
           </div>
 

@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import Image from "next/image"
+import SolicitarServicioModal from "@/components/modals/SolicitarServicioModal"
+import { getAccessToken } from "@/lib/auth"
 
 // Tipos basados en tu API
 type TabType = 'servicios' | 'resenas' | 'certificaciones'
@@ -84,6 +86,7 @@ function TecnicoDetalleContent({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('servicios')
   const [isFavorite, setIsFavorite] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
 
   // Cargar datos del técnico desde la API
   useEffect(() => {
@@ -127,6 +130,27 @@ function TecnicoDetalleContent({ id }: { id: string }) {
     cargarTecnico()
   }, [id])
 
+  // Verificar si es favorito al cargar
+  useEffect(() => {
+    const checkFavorite = async () => {
+      try {
+        const token = getAccessToken()
+        if (!token) return
+
+        const response = await fetch(`http://localhost:5000/api/favoritos/check/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await response.json()
+        if (data.success) {
+          setIsFavorite(data.data.isFavorite)
+        }
+      } catch (error) {
+        console.error('Error al verificar favorito:', error)
+      }
+    }
+    if (tecnico) checkFavorite()
+  }, [tecnico, id])
+
   const handleChatear = () => {
     router.push('/Chat')
   }
@@ -141,6 +165,40 @@ function TecnicoDetalleContent({ id }: { id: string }) {
     if (tecnico?.telefono) {
       const mensaje = encodeURIComponent(`Hola ${tecnico.nombres}, me comunico desde ConfiaPE para consultar sobre tus servicios de ${tecnico.oficio}.`)
       window.open(`https://wa.me/${tecnico.telefono}?text=${mensaje}`, '_blank')
+    }
+  }
+
+  // Manejar favoritos
+  const handleToggleFavorite = async () => {
+    try {
+      const token = getAccessToken()
+      if (!token) {
+        alert('Debes iniciar sesión para agregar favoritos')
+        return
+      }
+
+      if (isFavorite) {
+        // Eliminar
+        await fetch(`http://localhost:5000/api/favoritos/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        setIsFavorite(false)
+      } else {
+        // Agregar
+        await fetch('http://localhost:5000/api/favoritos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ tecnicoId: id })
+        })
+        setIsFavorite(true)
+      }
+    } catch (error) {
+      console.error('Error al gestionar favorito:', error)
+      alert('Error al actualizar favoritos')
     }
   }
 
@@ -283,7 +341,7 @@ function TecnicoDetalleContent({ id }: { id: string }) {
                       </div>
 
                       <button
-                        onClick={() => setIsFavorite(!isFavorite)}
+                        onClick={handleToggleFavorite}
                         className="bg-white p-4 rounded-2xl shadow-lg hover:scale-110 transition-all"
                       >
                         <svg 
@@ -570,8 +628,11 @@ function TecnicoDetalleContent({ id }: { id: string }) {
                   </div>
                 </div>
 
-                <button className="w-full mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:scale-105 transition-all shadow-xl">
-                  Solicitar Presupuesto
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="w-full mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:scale-105 transition-all shadow-xl"
+                >
+                  Solicitar Servicio
                 </button>
               </div>
             </div>
@@ -580,6 +641,18 @@ function TecnicoDetalleContent({ id }: { id: string }) {
       </main>
 
       <Footer />
+
+      {/* Modal de solicitar servicio */}
+      <SolicitarServicioModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        tecnico={{
+          id: tecnico.id,
+          nombre: nombreCompleto,
+          oficio: tecnico.oficio
+        }}
+        onSuccess={() => router.push('/cliente/trabajos')}
+      />
     </div>
   )
 }

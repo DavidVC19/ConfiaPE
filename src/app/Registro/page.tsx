@@ -71,32 +71,77 @@ export default function RegistroPage() {
     setLoading(true)
     try {
       if (tipoUsuario === 'cliente') {
+        // Validar campos requeridos para cliente
+        if (!nombreCompleto || nombreCompleto.trim().length < 3) {
+          setError('El nombre completo es requerido (mínimo 3 caracteres)')
+          return
+        }
+
+        console.log('Registrando cliente:', { nombreCompleto, email, telefono })
+
         const res = await request<{ success: boolean; data: { user: any; tokens: { accessToken: string; refreshToken: string } } }>({
           method: 'POST',
           path: '/api/auth/register/cliente',
           body: { nombreCompleto, email, telefono, password },
         })
+
+        console.log('Cliente registrado exitosamente:', res)
         saveSession(res.data.user, res.data.tokens.accessToken, res.data.tokens.refreshToken)
         router.push('/')
       } else {
+        // Validar campos requeridos para técnico
+        if (!dni || dni.trim().length < 8) {
+          setError('El DNI es requerido y debe tener al menos 8 dígitos')
+          return
+        }
+        if (!nombres || !apellidos) {
+          setError('Nombres y apellidos son requeridos')
+          return
+        }
+
         const form = new FormData()
         form.append('email', email)
         form.append('password', password)
-        form.append('nombre', `${nombres} ${apellidos}`.trim())
+        form.append('nombre', `${nombres} ${apellidos}`.trim()) // Backend lo separará automáticamente
+        form.append('nombres', nombres) // También enviamos por separado
+        form.append('apellidos', apellidos)
         form.append('dni', dni)
         if (telefono) form.append('telefono', telefono)
         if (carreraTecnica) form.append('oficio', carreraTecnica)
-        certificados.slice(0, 3).forEach((file, idx) => form.append('certificados', file))
+
+        // Enviar certificados uno por uno
+        certificados.slice(0, 3).forEach((file) => {
+          form.append('certificados', file)
+        })
 
         const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/register/tecnico`
-        const res = await fetch(url, { method: 'POST', body: form, credentials: 'include' })
+        console.log('Registrando técnico en:', url)
+
+        const res = await fetch(url, {
+          method: 'POST',
+          body: form,
+          credentials: 'include'
+        })
+
         const payload = await res.json()
-        if (!res.ok) throw new Error(payload?.error || 'Error registrando técnico')
-        saveSession(payload.data.user, payload.data.tokens.accessToken, payload.data.tokens.refreshToken)
-        router.push('/admin')
+        console.log('Respuesta del servidor:', payload)
+
+        if (!res.ok) {
+          const errorMsg = payload?.error || payload?.message || 'Error registrando técnico'
+          throw new Error(errorMsg)
+        }
+
+        // Verificar estructura de respuesta
+        if (payload.success && payload.data) {
+          saveSession(payload.data.user, payload.data.tokens.accessToken, payload.data.tokens.refreshToken)
+          router.push('/admin')
+        } else {
+          throw new Error('Respuesta del servidor inválida')
+        }
       }
     } catch (err: any) {
-      setError(err?.message || 'Error en el registro')
+      console.error('Error en el registro:', err)
+      setError(err?.message || 'Error en el registro. Por favor, intenta de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -384,9 +429,24 @@ export default function RegistroPage() {
 
             <button
               onClick={handleSubmit}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all duration-200"
+              disabled={loading}
+              className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold transition-all duration-200 ${
+                loading
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:shadow-lg hover:scale-105'
+              }`}
             >
-              Crear Cuenta
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creando cuenta...
+                </span>
+              ) : (
+                'Crear Cuenta'
+              )}
             </button>
           </div>
 

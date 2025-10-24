@@ -18,21 +18,35 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Validaciones
+    if (!email || !email.includes('@')) {
+      setError('Por favor ingresa un email válido')
+      return
+    }
+    if (!password || password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+
     setLoading(true)
     try {
-      const roleMap = {
-        'cliente': 'CLIENTE',
-        'tecnico': 'TECNICO',
-      } as const
-      const { user, tokens } = await loginApi(email, password, roleMap[tipoUsuario])
-      // Si no desea recordar, no persistimos refreshToken
-      if (!recordarme) {
-        saveSession(user, tokens.accessToken)
-      }
+      console.log('Intentando login:', { email, tipoUsuario })
+
+      // No necesitamos enviar el tipoUsuario, el backend lo determina por el rol del usuario
+      const { user, tokens } = await loginApi(email, password)
+
+      console.log('Login exitoso:', user)
+
+      // Guardar sesión - siempre con refreshToken
+      saveSession(user, tokens.accessToken, recordarme ? tokens.refreshToken : undefined)
+
       const to = getRedirectPathByRole(user.rol)
+      console.log('Redirigiendo a:', to)
       router.push(to)
     } catch (err: any) {
-      setError(err?.message || 'Error al iniciar sesión')
+      console.error('Error en login:', err)
+      setError(err?.message || 'Credenciales inválidas. Por favor, verifica tu email y contraseña.')
     } finally {
       setLoading(false)
     }
@@ -167,7 +181,17 @@ export default function LoginPage() {
               disabled={loading}
               className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold transition-all duration-200 ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-105'}`}
             >
-              {loading ? 'Ingresando...' : 'Iniciar Sesión'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Ingresando...
+                </span>
+              ) : (
+                'Iniciar Sesión'
+              )}
             </button>
           </div>
 

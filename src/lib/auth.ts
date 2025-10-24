@@ -56,9 +56,8 @@ export function clearSession() {
   localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
-export async function login(email: string, password: string, tipoUsuario?: UserRole) {
-  const body: any = { email, password }
-  if (tipoUsuario) body.tipoUsuario = tipoUsuario
+export async function login(email: string, password: string) {
+  const body = { email, password }
   const res = await request<LoginResponse>({ method: 'POST', path: '/api/auth/login', body })
   const { user, tokens } = res.data
   saveSession(user, tokens.accessToken, tokens.refreshToken)
@@ -89,8 +88,12 @@ export function logout() {
   clearSession()
 }
 
+// Alias para compatibilidad
+export const removeTokens = clearSession
+
 export function getRedirectPathByRole(role: UserRole) {
   if (role === 'TECNICO' || role === 'ADMIN') return '/admin'
+  if (role === 'CLIENTE') return '/cliente'
   return '/'
 }
 

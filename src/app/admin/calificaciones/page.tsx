@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
 import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import { getStoredUser, getAccessToken } from "@/lib/auth"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
 // Datos de ejemplo de calificaciones
 const calificacionesData = [
@@ -104,16 +108,91 @@ export default function CalificacionesPage() {
   const [filtro, setFiltro] = useState('todos')
   const [respuestaEditando, setRespuestaEditando] = useState<number | null>(null)
   const [nuevaRespuesta, setNuevaRespuesta] = useState('')
+  const [user, setUser] = useState<any>(null)
+  const [calificaciones, setCalificaciones] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<any>(null)
+  const router = useRouter()
 
-  const calificacionesFiltradas = filtro === 'todos' 
-    ? calificacionesData 
+  // Cargar calificaciones del técnico
+  useEffect(() => {
+    const loadCalificaciones = async () => {
+      try {
+        setLoading(true)
+        const storedUser = getStoredUser()
+        if (!storedUser || storedUser.rol !== 'TECNICO') {
+          router.push('/Login')
+          return
+        }
+        setUser(storedUser)
+
+        const token = getAccessToken()
+
+        // Obtener el ID del técnico desde su perfil
+        const tecnicoResponse = await fetch(`${API_URL}/api/tecnicos/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        const tecnicoData = await tecnicoResponse.json()
+
+        if (tecnicoData.success && tecnicoData.data?.id) {
+          const tecnicoId = tecnicoData.data.id
+
+          // Obtener las calificaciones del técnico
+          const response = await fetch(`${API_URL}/api/reviews/tecnico/${tecnicoId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+
+          const data = await response.json()
+          if (data.success) {
+            const reviewsArray = Array.isArray(data.data?.reviews) ? data.data.reviews : []
+            setCalificaciones(reviewsArray)
+
+            // Calcular estadísticas
+            if (reviewsArray.length > 0) {
+              const distribucion: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+              let sum = 0
+              reviewsArray.forEach((review: any) => {
+                distribucion[review.calificacion] = (distribucion[review.calificacion] || 0) + 1
+                sum += review.calificacion
+              })
+
+              setStats({
+                promedio: (sum / reviewsArray.length).toFixed(1),
+                totalCalificaciones: reviewsArray.length,
+                distribucion
+              })
+            } else {
+              setStats({
+                promedio: 0,
+                totalCalificaciones: 0,
+                distribucion: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando calificaciones:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadCalificaciones()
+  }, [router])
+
+  const calificacionesFiltradas = filtro === 'todos'
+    ? calificaciones
     : filtro === '5'
-    ? calificacionesData.filter(c => c.calificacion === 5)
+    ? calificaciones.filter(c => c.calificacion === 5)
     : filtro === '4'
-    ? calificacionesData.filter(c => c.calificacion === 4)
+    ? calificaciones.filter(c => c.calificacion === 4)
     : filtro === '3'
-    ? calificacionesData.filter(c => c.calificacion === 3)
-    : calificacionesData.filter(c => c.calificacion <= 2)
+    ? calificaciones.filter(c => c.calificacion === 3)
+    : calificaciones.filter(c => c.calificacion <= 2)
 
   const renderEstrellas = (calificacion: number) => {
     return [...Array(5)].map((_, i) => (
@@ -144,13 +223,9 @@ export default function CalificacionesPage() {
       />
 
       <div className="flex">
-        <AdminSidebar 
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+        <AdminSidebar />
 
-        {/* 👇 CAMBIO CLAVE APLICADO AQUÍ */}
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-64 transition-all duration-300">  
+        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">  
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">
@@ -162,19 +237,27 @@ export default function CalificacionesPage() {
               </p>
             </div>
 
+            {loading && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Cargando calificaciones...</p>
+              </div>
+            )}
+
             {/* Estadísticas principales */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Calificación Promedio</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-3xl font-black text-gray-900">{estadisticasCalificaciones.promedio}</span>
-                      <div className="flex">
-                        {renderEstrellas(Math.floor(estadisticasCalificaciones.promedio))}
+            {!loading && stats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-600 text-sm font-medium">Calificación Promedio</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-3xl font-black text-gray-900">{stats.promedio}</span>
+                        <div className="flex">
+                          {renderEstrellas(Math.floor(parseFloat(stats.promedio)))}
+                        </div>
                       </div>
                     </div>
-                  </div>
                   <div className="w-12 h-12 bg-yellow-100 rounded-2xl flex items-center justify-center">
                     <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -183,51 +266,53 @@ export default function CalificacionesPage() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Total Calificaciones</p>
-                    <p className="text-3xl font-black text-gray-900">{estadisticasCalificaciones.totalCalificaciones}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-600 text-sm font-medium">Total Calificaciones</p>
+                      <p className="text-3xl font-black text-gray-900">{stats.totalCalificaciones}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Calificaciones 5★</p>
-                    <p className="text-3xl font-black text-gray-900">{estadisticasCalificaciones.distribucion[5]}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
+                <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-600 text-sm font-medium">Calificaciones 5★</p>
+                      <p className="text-3xl font-black text-gray-900">{stats.distribucion[5]}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Calificaciones 4★</p>
-                    <p className="text-3xl font-black text-gray-900">{estadisticasCalificaciones.distribucion[4]}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
-                    <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
+                <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-600 text-sm font-medium">Calificaciones 4★</p>
+                      <p className="text-3xl font-black text-gray-900">{stats.distribucion[4]}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Filtros */}
-            <div className="bg-white rounded-3xl shadow-xl p-6 mb-8 border border-gray-100">
+            {!loading && (
+              <div className="bg-white rounded-3xl shadow-xl p-6 mb-8 border border-gray-100">
               <div className="flex flex-wrap gap-4">
                 {[
                   { id: 'todos', label: 'Todas' },
@@ -249,33 +334,35 @@ export default function CalificacionesPage() {
                   </button>
                 ))}
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Lista de calificaciones */}
-            <div className="space-y-6">
+            {!loading && (
+              <div className="space-y-6">
               {calificacionesFiltradas.map((calificacion) => (
                 <div key={calificacion.id} className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
                   {/* Header de la calificación */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
-                        {calificacion.cliente.charAt(0)}
+                        {calificacion.trabajo?.cliente?.user?.nombre?.charAt(0)?.toUpperCase() || 'C'}
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-gray-900">{calificacion.cliente}</h3>
-                        <p className="text-gray-600">{calificacion.trabajo}</p>
+                        <h3 className="text-xl font-black text-gray-900">{calificacion.trabajo?.cliente?.user?.nombre || 'Cliente'}</h3>
+                        <p className="text-gray-600">{calificacion.trabajo?.titulo || 'Trabajo'}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <div className="flex">
                             {renderEstrellas(calificacion.calificacion)}
                           </div>
                           <span className="text-sm text-gray-500">
-                            {new Date(calificacion.fecha).toLocaleDateString('es-ES')}
+                            {new Date(calificacion.createdAt).toLocaleDateString('es-ES')}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">S/ {calificacion.precio}</p>
+                      <p className="text-lg font-bold text-gray-900">S/ {calificacion.trabajo?.precioEstimado || 0}</p>
                     </div>
                   </div>
 
@@ -339,15 +426,16 @@ export default function CalificacionesPage() {
                   )}
                 </div>
               ))}
-            </div>
 
-            {calificacionesFiltradas.length === 0 && (
-              <div className="text-center py-16">
-                <svg className="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No hay calificaciones</h3>
-                <p className="text-gray-500">No se encontraron calificaciones con el filtro seleccionado</p>
+                {calificacionesFiltradas.length === 0 && (
+                  <div className="text-center py-16">
+                    <svg className="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">No hay calificaciones</h3>
+                    <p className="text-gray-500">No se encontraron calificaciones con el filtro seleccionado</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

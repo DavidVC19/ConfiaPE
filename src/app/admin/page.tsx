@@ -76,13 +76,22 @@ const notifications = [
   }
 ]
 
-export default function AdminDashboard() {
+export default function TecnicoDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   const router = useRouter()
+
+  // Detectar móvil
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const loadUser = async () => {
@@ -90,11 +99,20 @@ export default function AdminDashboard() {
         // Primero intentar obtener datos del storage
         const storedUser = getStoredUser()
         if (storedUser) {
+          // Verificar que sea técnico
+          if (storedUser.rol !== 'TECNICO') {
+            router.push('/Login')
+            return
+          }
           setUser(storedUser)
         }
-        
+
         // Luego actualizar con datos frescos del servidor
         const userData = await me()
+        if (userData.rol !== 'TECNICO') {
+          router.push('/Login')
+          return
+        }
         setUser(userData)
       } catch (err: any) {
         setError(err?.message || 'Error cargando usuario')
@@ -144,15 +162,23 @@ export default function AdminDashboard() {
         user={user}
       />
 
-      <div className="flex">
+      <div className="flex relative">
         {/* Sidebar */}
-        <AdminSidebar 
+        <AdminSidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
 
+        {/* Overlay para móvil */}
+        {sidebarOpen && isMobile && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Contenido principal - CON MARGIN LEFT EN DESKTOP */}
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-64 transition-all duration-300">
+        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">
           <div className="max-w-7xl mx-auto">
             {/* Header del dashboard */}
             <div className="mb-8">

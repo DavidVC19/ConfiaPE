@@ -55,7 +55,7 @@ export default function HeaderCliente({
               alt="ConfiaPE"
               className="w-10 h-10 object-contain"
             />
-            <h1 className="hidden sm:block text-xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="hidden sm:block text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               ConfiaPE
             </h1>
           </div>

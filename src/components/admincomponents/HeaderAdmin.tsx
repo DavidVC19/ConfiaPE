@@ -52,7 +52,7 @@ export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifica
               <img
                 src="/images/ConfiaPE.png"
                 alt="ConfiaPE"
-                className="h-10 w-auto object-contain"
+                className="h-20 w-auto object-contain"
               />
             </div>
           </div>

@@ -7,7 +7,7 @@ import { login as loginApi, getRedirectPathByRole, saveSession } from "../../lib
 
 export default function LoginPage() {
   const [mostrarPassword, setMostrarPassword] = useState(false)
-  const [tipoUsuario, setTipoUsuario] = useState<'cliente' | 'tecnico'>('cliente')
+  const [tipoUsuario, setTipoUsuario] = useState<'cliente' | 'tecnico' | 'admin'>('cliente')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [recordarme, setRecordarme] = useState(false)
@@ -38,9 +38,15 @@ export default function LoginPage() {
 
       console.log('Login exitoso:', user)
 
+      // Verificar si el usuario es administrador
+      if (tipoUsuario === 'admin' && user.rol !== 'ADMIN') {
+        throw new Error('No tienes permisos de administrador')
+      }
+
       // Guardar sesión - siempre con refreshToken
       saveSession(user, tokens.accessToken, recordarme ? tokens.refreshToken : undefined)
 
+      // Redirigir según el rol
       const to = getRedirectPathByRole(user.rol)
       console.log('Redirigiendo a:', to)
       router.push(to)
@@ -54,49 +60,19 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-        <Header />
-        <div className="flex flex-1 pt-24">
-      {/* Lado izquierdo - Formulario */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white">
-        <div className="w-full max-w-md">
+      <Header />
+      <div className="flex flex-1 pt-24">
+        {/* Lado izquierdo - Formulario */}
+        <div className="flex-1 flex items-center justify-center p-8 bg-white">
+          <div className="w-full max-w-md">
 
-
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              ¡Bienvenido de nuevo!
-            </h1>
-            <p className="text-gray-600">
-              Ingresa tus credenciales para continuar
-            </p>
-          </div>
-
-          {/* Selector de tipo de usuario */}
-          <div className="flex gap-3 mb-6 p-1 bg-gray-100 rounded-xl">
-            <button
-              onClick={() => setTipoUsuario('cliente')}
-              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                tipoUsuario === 'cliente'
-                  ? 'bg-white text-blue-600 shadow-md'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Cliente
-            </button>
-            <button
-              onClick={() => setTipoUsuario('tecnico')}
-              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                tipoUsuario === 'tecnico'
-                  ? 'bg-white text-blue-600 shadow-md'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Técnico
-            </button>
-          </div>
-
-          {/* Formulario */}
-          <div className="space-y-5">
-            {/* Error */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                ¡Bienvenido de nuevo!
+              </h1>
+              <p className="text-gray-600">
+                Ingresa tus credenciales para continuar
+              </p>
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}

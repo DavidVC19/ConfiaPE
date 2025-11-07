@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import HeaderAdmin from '@/components/admincomponents/HeaderAdmin'
-import AdminSidebar from '@/components/admincomponents/AdminSidebar'
+import { Suspense, useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import HeaderTecnico from '@/components/tecnicocomponents/HeaderTecnico'
+import TecnicoSidebar from '@/components/tecnicocomponents/TecnicoSidebar'
 import { getStoredUser } from '@/lib/auth'
 import { getConversations, getMessages } from '@/lib/chat'
 import {
@@ -18,9 +18,9 @@ import {
   Message
 } from '@/lib/socket'
 
-export default function AdminChatPage() {
+function ChatPage() {
   const [user, setUser] = useState<any>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedChat, setSelectedChat] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -31,6 +31,8 @@ export default function AdminChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const selectedChatRef = useRef<Conversation | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const conversationId = searchParams.get('conversationId')
 
   // Mantener referencia actualizada del chat seleccionado
   useEffect(() => {
@@ -60,6 +62,14 @@ export default function AdminChatPage() {
         const convs = await getConversations()
         const convsArray = Array.isArray(convs) ? convs : []
         setConversations(convsArray)
+
+        if (conversationId) {
+          const chatFromUrl = convsArray.find(c => c.id === conversationId)
+          if (chatFromUrl) {
+            setSelectedChat(chatFromUrl)
+          }
+        }
+
       } catch (error) {
         console.error('Error cargando datos:', error)
       } finally {
@@ -68,7 +78,7 @@ export default function AdminChatPage() {
     }
 
     loadData()
-  }, [router])
+  }, [router, conversationId])
 
   // Conectar WebSocket una sola vez
   useEffect(() => {
@@ -182,7 +192,7 @@ export default function AdminChatPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <HeaderAdmin
+      <HeaderTecnico
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => {}}
         notifications={[]}
@@ -190,7 +200,7 @@ export default function AdminChatPage() {
       />
 
       <div className="flex relative">
-        <AdminSidebar
+        <TecnicoSidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -202,7 +212,7 @@ export default function AdminChatPage() {
           />
         )}
 
-        <main className="flex-1 pt-20 lg:ml-64 transition-all duration-300">
+        <main className={`flex-1 pt-20 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
           <div className="h-[calc(100vh-5rem)] flex flex-col">
             {/* Header */}
             <div className="px-4 sm:px-8 py-4 bg-white shadow-sm">
@@ -360,5 +370,13 @@ export default function AdminChatPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+export default function TecnicoChatPage() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <ChatPage />
+    </Suspense>
   )
 }

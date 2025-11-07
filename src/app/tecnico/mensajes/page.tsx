@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from "react"
-import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
-import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import HeaderTecnico from "@/components/tecnicocomponents/HeaderTecnico"
+import TecnicoSidebar from "@/components/tecnicocomponents/TecnicoSidebar"
 
 // Datos de ejemplo de conversaciones
 const conversacionesData = [
@@ -137,14 +137,14 @@ export default function MensajesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <HeaderAdmin 
+      <HeaderTecnico 
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
       />
 
       <div className="flex">
-        <AdminSidebar 
+        <TecnicoSidebar 
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

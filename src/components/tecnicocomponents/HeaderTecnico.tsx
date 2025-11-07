@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import { logout } from "../../lib/auth"
+import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 
 interface Notificacion {
@@ -13,17 +13,28 @@ interface Notificacion {
   leida: boolean
 }
 
-interface HeaderAdminProps {
-  onMenuClick?: () => void
-  onNotificationClick?: () => void
-  notifications?: Notificacion[]
+import { PanelLeftClose } from 'lucide-react';
+
+interface Notificacion {
+  id: number
+  tipo: string
+  titulo: string
+  mensaje: string
+  timestamp: string
+  leida: boolean
+}
+
+interface HeaderTecnicoProps {
+  onMenuClick: () => void
+  onNotificationClick: () => void
+  notifications: Notificacion[]
   user?: any
 }
 
-export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifications = [], user }: HeaderAdminProps) {
+export default function HeaderTecnico({ onMenuClick, onNotificationClick, notifications = [], user }: HeaderTecnicoProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const router = useRouter()
-
+  
   const notificacionesNoLeidas = notifications.filter(n => !n.leida).length
 
   const handleLogout = () => {
@@ -32,22 +43,11 @@ export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifica
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="px-4 sm:px-6 lg:px-8">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Lado izquierdo - Logo y menú */}
-          <div className="flex items-center gap-3">
-            {onMenuClick && (
-              <button
-                onClick={onMenuClick}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
-              >
-                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            )}
-
+          <div className="flex items-center">
             <div className="flex items-center">
               <img
                 src="/images/ConfiaPE.png"
@@ -107,7 +107,7 @@ export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifica
                   </div>
 
                   <div className="py-1">
-                    <a href="/admin/perfil" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <a href="/tecnico/perfil" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
@@ -147,6 +147,12 @@ export default function HeaderAdmin({ onMenuClick, onNotificationClick, notifica
           </div>
         </div>
       </div>
+      <button
+        onClick={onMenuClick}
+        className="fixed top-4 left-4 z-50 p-2 rounded-xl bg-white/50 hover:bg-gray-100 transition-colors"
+      >
+        <PanelLeftClose className="w-6 h-6 text-gray-700" />
+      </button>
     </header>
   )
 }

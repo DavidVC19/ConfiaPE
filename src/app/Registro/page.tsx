@@ -134,7 +134,7 @@ export default function RegistroPage() {
         // Verificar estructura de respuesta
         if (payload.success && payload.data) {
           saveSession(payload.data.user, payload.data.tokens.accessToken, payload.data.tokens.refreshToken)
-          router.push('/admin')
+          router.push('/tecnico')
         } else {
           throw new Error('Respuesta del servidor inválida')
         }

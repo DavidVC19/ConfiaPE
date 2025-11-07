@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
-import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import HeaderTecnico from "@/components/tecnicocomponents/HeaderTecnico"
+import TecnicoSidebar from "@/components/tecnicocomponents/TecnicoSidebar"
 import { getStoredUser, getAccessToken } from "@/lib/auth"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
@@ -84,17 +84,18 @@ const notifications = [
 ]
 
 export default function MisTrabajosPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showNotifications, setShowNotifications] = useState(false)
   const [filtro, setFiltro] = useState('todos')
   const [user, setUser] = useState<any>(null)
   const [trabajos, setTrabajos] = useState<any[]>([])
+  const [conversations, setConversations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  // Cargar trabajos del técnico
+  // Cargar trabajos y conversaciones del técnico
   useEffect(() => {
-    const loadTrabajos = async () => {
+    const loadData = async () => {
       try {
         setLoading(true)
         const storedUser = getStoredUser()
@@ -105,25 +106,47 @@ export default function MisTrabajosPage() {
         setUser(storedUser)
 
         const token = getAccessToken()
-        const response = await fetch(`${API_URL}/api/trabajos`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const [trabajosRes, conversationsRes] = await Promise.all([
+          fetch(`${API_URL}/api/trabajos`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/api/chat/conversations`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ])
 
-        const data = await response.json()
-        if (data.success) {
-          const trabajosArray = Array.isArray(data.data?.data) ? data.data.data : []
+        const trabajosData = await trabajosRes.json()
+        if (trabajosData.success) {
+          const trabajosArray = Array.isArray(trabajosData.data?.data) ? trabajosData.data.data : []
           setTrabajos(trabajosArray)
         }
+
+        const conversationsData = await conversationsRes.json()
+        if (conversationsData.success) {
+          setConversations(conversationsData.data)
+        }
+
       } catch (error) {
-        console.error('Error cargando trabajos:', error)
+        console.error('Error cargando datos:', error)
       } finally {
         setLoading(false)
       }
     }
-    loadTrabajos()
+    loadData()
   }, [router])
+
+  const handleChat = (clienteId: string) => {
+    const conversation = conversations.find(c => c.cliente.id === clienteId);
+    if (conversation) {
+      router.push(`/tecnico/chat?conversationId=${conversation.id}`);
+    } else {
+      alert('El cliente aún no ha iniciado una conversación.');
+    }
+  };
+
+  const handleVerDetalles = (trabajoId: string) => {
+    router.push(`/tecnico/trabajos/${trabajoId}`);
+  };
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -159,16 +182,16 @@ export default function MisTrabajosPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <HeaderAdmin 
+      <HeaderTecnico 
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
       />
 
       <div className="flex">
-        <AdminSidebar />
+        <TecnicoSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">
+        <main className={`flex-1 pt-20 px-4 sm:px-8 pb-8 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">
@@ -237,7 +260,7 @@ export default function MisTrabajosPage() {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span className="text-sm">{new Date(trabajo.createdAt).toLocaleDateString('es-ES')}</span>
+                      <span className="text-sm">{trabajo.fechaSolicitud ? new Date(trabajo.fechaSolicitud).toLocaleDateString('es-ES') : 'Fecha no disponible'}</span>
                     </div>
 
                     {trabajo.direccion && (
@@ -274,10 +297,15 @@ export default function MisTrabajosPage() {
 
                   {/* Botones de acción */}
                   <div className="flex gap-3">
-                    <button className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-2xl font-bold hover:scale-105 transition-all">
+                    <button 
+                      onClick={() => handleVerDetalles(trabajo.id)}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-2xl font-bold hover:scale-105 transition-all">
                       Ver Detalles
                     </button>
-                    <button className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-3 rounded-2xl hover:scale-105 transition-all">
+                    <button
+                      onClick={() => handleChat(trabajo.clienteId)}
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-3 rounded-2xl hover:scale-105 transition-all"
+                    >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>

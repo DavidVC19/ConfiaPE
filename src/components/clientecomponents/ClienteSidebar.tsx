@@ -81,7 +81,7 @@ export default function ClienteSidebar({ isOpen = true, onClose }: ClienteSideba
       {/* Sidebar */}
       <aside
         className={`fixed lg:fixed top-0 left-0 w-72 bg-white border-r border-gray-200 h-screen pt-20 z-40 transition-transform duration-300 shadow-xl ${
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <nav className="p-4 space-y-1">

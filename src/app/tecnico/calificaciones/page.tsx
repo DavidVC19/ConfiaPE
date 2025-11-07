@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
-import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import HeaderTecnico from "@/components/tecnicocomponents/HeaderTecnico"
+import TecnicoSidebar from "@/components/tecnicocomponents/TecnicoSidebar"
 import { getStoredUser, getAccessToken } from "@/lib/auth"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
@@ -103,7 +103,7 @@ const notifications = [
 ]
 
 export default function CalificacionesPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showNotifications, setShowNotifications] = useState(false)
   const [filtro, setFiltro] = useState('todos')
   const [respuestaEditando, setRespuestaEditando] = useState<number | null>(null)
@@ -125,56 +125,9 @@ export default function CalificacionesPage() {
           return
         }
         setUser(storedUser)
+        setCalificaciones(calificacionesData)
+        setStats(estadisticasCalificaciones)
 
-        const token = getAccessToken()
-
-        // Obtener el ID del técnico desde su perfil
-        const tecnicoResponse = await fetch(`${API_URL}/api/tecnicos/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
-        const tecnicoData = await tecnicoResponse.json()
-
-        if (tecnicoData.success && tecnicoData.data?.id) {
-          const tecnicoId = tecnicoData.data.id
-
-          // Obtener las calificaciones del técnico
-          const response = await fetch(`${API_URL}/api/reviews/tecnico/${tecnicoId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-
-          const data = await response.json()
-          if (data.success) {
-            const reviewsArray = Array.isArray(data.data?.reviews) ? data.data.reviews : []
-            setCalificaciones(reviewsArray)
-
-            // Calcular estadísticas
-            if (reviewsArray.length > 0) {
-              const distribucion: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-              let sum = 0
-              reviewsArray.forEach((review: any) => {
-                distribucion[review.calificacion] = (distribucion[review.calificacion] || 0) + 1
-                sum += review.calificacion
-              })
-
-              setStats({
-                promedio: (sum / reviewsArray.length).toFixed(1),
-                totalCalificaciones: reviewsArray.length,
-                distribucion
-              })
-            } else {
-              setStats({
-                promedio: 0,
-                totalCalificaciones: 0,
-                distribucion: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-              })
-            }
-          }
-        }
       } catch (error) {
         console.error('Error cargando calificaciones:', error)
       } finally {
@@ -216,16 +169,16 @@ export default function CalificacionesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <HeaderAdmin 
+      <HeaderTecnico 
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
       />
 
       <div className="flex">
-        <AdminSidebar />
+        <TecnicoSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">  
+        <main className={`flex-1 pt-20 px-4 sm:px-8 pb-8 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">

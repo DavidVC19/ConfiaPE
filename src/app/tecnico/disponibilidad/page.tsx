@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
-import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import HeaderTecnico from "@/components/tecnicocomponents/HeaderTecnico"
+import TecnicoSidebar from "@/components/tecnicocomponents/TecnicoSidebar"
 import { getStoredUser, getAccessToken } from "@/lib/auth"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
@@ -151,14 +151,14 @@ export default function DisponibilidadPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <HeaderAdmin 
+      <HeaderTecnico 
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
       />
 
       <div className="flex">
-        <AdminSidebar />
+        <TecnicoSidebar />
 
         <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">
           <div className="max-w-7xl mx-auto">

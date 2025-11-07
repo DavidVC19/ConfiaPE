@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from "react"
-import HeaderAdmin from "@/components/admincomponents/HeaderAdmin"
-import AdminSidebar from "@/components/admincomponents/AdminSidebar"
+import HeaderTecnico from "@/components/tecnicocomponents/HeaderTecnico"
+import TecnicoSidebar from "@/components/tecnicocomponents/TecnicoSidebar"
 import { getStoredUser, me, getAccessToken } from "../../../lib/auth"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -488,7 +488,7 @@ export default function PerfilPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <HeaderAdmin
+      <HeaderTecnico
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onNotificationClick={() => setShowNotifications(!showNotifications)}
         notifications={notifications}
@@ -496,7 +496,7 @@ export default function PerfilPage() {
       />
 
       <div className="flex">
-        <AdminSidebar />
+        <TecnicoSidebar />
 
         {/* Contenido principal con margen para el sidebar */}
         <main className="flex-1 pt-20 px-4 sm:px-8 pb-8 lg:ml-72 transition-all duration-300">

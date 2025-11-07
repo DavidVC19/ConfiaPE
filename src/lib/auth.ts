@@ -92,7 +92,8 @@ export function logout() {
 export const removeTokens = clearSession
 
 export function getRedirectPathByRole(role: UserRole) {
-  if (role === 'TECNICO' || role === 'ADMIN') return '/admin'
+  if (role === 'TECNICO') return '/tecnico'
+  if (role === 'ADMIN') return '/admin'
   if (role === 'CLIENTE') return '/cliente'
   return '/'
 }

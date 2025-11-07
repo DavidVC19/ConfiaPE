@@ -4,11 +4,12 @@ import { Suspense, useEffect, useState } from "react"
 import { use } from "react"
 import { notFound } from "next/navigation"
 import { useRouter } from "next/navigation"
-import Header from "@/components/Header"
-import Footer from "@/components/Footer"
 import Image from "next/image"
 import SolicitarServicioModal from "@/components/modals/SolicitarServicioModal"
 import { getAccessToken } from "@/lib/auth"
+import HeaderCliente from "@/components/clientecomponents/HeaderCliente"
+import ClienteSidebar from "@/components/clientecomponents/ClienteSidebar"
+import Footer from "@/components/Footer"
 
 // Tipos basados en tu API
 type TabType = 'servicios' | 'resenas' | 'certificaciones'
@@ -22,6 +23,21 @@ interface Review {
     nombres: string
     apellidos: string
   }
+}
+
+interface Servicio {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  precio: number | null;
+}
+
+interface Certificacion {
+  id: string;
+  nombre: string;
+  institucion: string | null;
+  fechaObtencion: string | null;
+  imagenUrl: string;
 }
 
 interface Tecnico {
@@ -41,8 +57,8 @@ interface Tecnico {
   telefono: string
   email: string
   horarios: string
-  servicios: string[]
-  certificaciones: string[]
+  servicios: Servicio[]
+  certificaciones: Certificacion[]
   user: {
     nombre: string
     avatarUrl: string | null
@@ -58,6 +74,38 @@ interface TecnicoResponse {
   data: Tecnico
 }
 
+const mockReviews = [
+  {
+    id: 'mock-1',
+    calificacion: 5,
+    comentario: 'Un trabajo impecable y muy profesional. Resolvió el problema en menos tiempo de lo esperado. ¡Totalmente recomendado!',
+    fechaCreacion: '2025-10-20T10:00:00Z',
+    cliente: {
+      nombres: 'Ana',
+      apellidos: 'García',
+    },
+  },
+  {
+    id: 'mock-2',
+    calificacion: 4,
+    comentario: 'Buen servicio y muy amable. Llegó a la hora acordada y fue muy claro con el diagnóstico. El precio fue justo.',
+    fechaCreacion: '2025-10-18T15:30:00Z',
+    cliente: {
+      nombres: 'Carlos',
+      apellidos: 'Martínez',
+    },
+  },
+];
+
+const mockServices = [
+  { id: '1', nombre: 'Instalaciones eléctricas completas', descripcion: null, precio: null },
+  { id: '2', nombre: 'Mantenimiento de tableros eléctricos', descripcion: null, precio: null },
+  { id: '3', nombre: 'Reparación de cortocircuitos', descripcion: null, precio: null },
+  { id: '4', nombre: 'Instalación de luminarias y tomacorrientes', descripcion: null, precio: null },
+];
+
+
+
 // Componente principal
 export default function TecnicoDetalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -65,7 +113,7 @@ export default function TecnicoDetalle({ params }: { params: Promise<{ id: strin
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <Header />
+        <HeaderCliente onMenuClick={() => {}} onNotificationClick={() => {}} />
         <div className="flex-grow pt-24 pb-16 flex items-center justify-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
           <span className="ml-4 text-lg text-gray-600">Cargando técnico...</span>
@@ -87,6 +135,7 @@ function TecnicoDetalleContent({ id }: { id: string }) {
   const [activeTab, setActiveTab] = useState<TabType>('servicios')
   const [isFavorite, setIsFavorite] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   // Cargar datos del técnico desde la API
   useEffect(() => {
@@ -232,7 +281,7 @@ function TecnicoDetalleContent({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <Header />
+        <HeaderCliente onMenuClick={() => {}} onNotificationClick={() => {}} />
         <div className="flex-grow pt-24 pb-16 flex items-center justify-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
           <span className="ml-4 text-lg text-gray-600">Cargando técnico...</span>
@@ -245,7 +294,7 @@ function TecnicoDetalleContent({ id }: { id: string }) {
   if (error || !tecnico) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <Header />
+        <HeaderCliente onMenuClick={() => {}} onNotificationClick={() => {}} />
         <div className="flex-grow pt-24 pb-16 flex items-center justify-center">
           <div className="text-center">
             <div className="text-6xl mb-4">😕</div>
@@ -273,16 +322,17 @@ function TecnicoDetalleContent({ id }: { id: string }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <Header />
-
-      <main className="flex-grow pt-24 pb-16 px-4 sm:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Hero Card Ultra Moderno */}
-          <div className="relative mb-8 overflow-hidden rounded-[2.5rem] shadow-2xl">
-            {/* Background con gradiente animado */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700">
-              <div className="absolute inset-0 opacity-30 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMTRjMy4zMTQgMCA2IDIuNjg2IDYgNnMtMi42ODYgNi02IDYtNi0yLjY4Ni02LTYgMi42ODYtNiA2LTZ6TTI0IDQ2YzMuMzE0IDAgNiAyLjY4NiA2IDZzLTIuNjg2IDYtNiA2LTYtMi42ODYtNi02IDIuNjg2LTYgNi02eiIvPjwvZz48L2c+PC9zdmc+')]"></div>
-            </div>
+      <HeaderCliente onMenuClick={() => setSidebarOpen(!sidebarOpen)} onNotificationClick={() => {}} />
+      <div className="flex flex-1 pt-16">
+        <ClienteSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className={`flex-grow pb-16 px-4 sm:px-8 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
+          <div className="max-w-7xl mx-auto">
+            {/* Hero Card Ultra Moderno */}
+            <div className="relative mb-8 overflow-hidden rounded-[2.5rem] shadow-2xl">
+              {/* Background con gradiente animado */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700">
+                <div className="absolute inset-0 opacity-30 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMTRjMy4zMTQgMCA2IDIuNjg2IDYgNnMtMi42ODYgNi02IDYtNi0yLjY4Ni02LTYgMi42ODYtNiA2LTZ6TTI0IDQ2YzMuMzE0IDAgNiAyLjY4NiA2IDZzLTIuNjg2IDYtNiA2LTYtMi42ODYtNi02IDIuNjg2LTYgNi02eiIvPjwvZz48L2c+PC9zdmc+')]"></div>
+              </div>
 
             <div className="relative bg-white/95 backdrop-blur-xl">
               <div className="px-8 py-12">
@@ -471,24 +521,18 @@ function TecnicoDetalleContent({ id }: { id: string }) {
                   <div className="space-y-4">
                     <h2 className="text-3xl font-black text-gray-900 mb-6">Servicios Ofrecidos</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {tecnico.servicios && tecnico.servicios.length > 0 ? (
-                        tecnico.servicios.map((servicio, index) => (
-                          <div key={index} className="group flex items-start gap-4 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl hover:shadow-lg transition-all hover:-translate-y-1 border border-blue-100">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-lg">
-                              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                            <div className="flex-grow">
-                              <span className="text-gray-900 font-semibold leading-relaxed">{servicio}</span>
-                            </div>
+                      {(tecnico.servicios && tecnico.servicios.length > 0 ? tecnico.servicios : mockServices).map((servicio) => (
+                        <div key={servicio.id} className="group flex items-start gap-4 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl hover:shadow-lg transition-all hover:-translate-y-1 border border-blue-100">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-lg">
+                            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
                           </div>
-                        ))
-                      ) : (
-                        <div className="col-span-2 text-center py-8 text-gray-500">
-                          No se han especificado servicios
+                          <div className="flex-grow">
+                            <span className="text-gray-900 font-semibold leading-relaxed">{servicio.nombre}</span>
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </div>
                 )}
@@ -496,40 +540,29 @@ function TecnicoDetalleContent({ id }: { id: string }) {
                 {activeTab === 'resenas' && (
                   <div>
                     <h2 className="text-3xl font-black text-gray-900 mb-6">Reseñas de Clientes</h2>
-                    {tecnico.reviews && tecnico.reviews.length > 0 ? (
-                      <div className="space-y-6">
-                        {tecnico.reviews.map((review) => (
-                          <div key={review.id} className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl border border-gray-200 hover:shadow-lg transition-all">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                  {review.cliente.nombres?.charAt(0) || 'C'}
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-gray-900 text-lg">
-                                    {review.cliente.nombres} {review.cliente.apellidos}
-                                  </h4>
-                                  <div className="flex items-center gap-1 mt-1">
-                                    {renderEstrellas(review.calificacion)}
-                                  </div>
-                                </div>
-                              </div>
-                              <span className="text-sm text-gray-500 font-medium">
-                                {new Date(review.fechaCreacion).toLocaleDateString('es-ES')}
-                              </span>
+                    {(tecnico.reviews && tecnico.reviews.length > 0 ? tecnico.reviews : mockReviews).map((review) => (
+                      <div key={review.id} className="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl border border-gray-200 hover:shadow-lg transition-all mb-4">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                              {review.cliente.nombres?.charAt(0) || 'C'}
                             </div>
-                            <p className="text-gray-700 leading-relaxed">{review.comentario}</p>
+                            <div>
+                              <h4 className="font-bold text-gray-900 text-lg">
+                                {review.cliente.nombres} {review.cliente.apellidos}
+                              </h4>
+                              <div className="flex items-center gap-1 mt-1">
+                                {renderEstrellas(review.calificacion)}
+                              </div>
+                            </div>
                           </div>
-                        ))}
+                          <span className="text-sm text-gray-500 font-medium">
+                            {new Date(review.fechaCreacion).toLocaleDateString('es-ES')}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">{review.comentario}</p>
                       </div>
-                    ) : (
-                      <div className="text-center py-16">
-                        <svg className="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                        </svg>
-                        <p className="text-gray-500 text-lg font-medium">Aún no hay reseñas para este técnico</p>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
 
@@ -537,21 +570,11 @@ function TecnicoDetalleContent({ id }: { id: string }) {
                   <div>
                     <h2 className="text-3xl font-black text-gray-900 mb-6">Certificaciones y Formación</h2>
                     <div className="space-y-4">
-                      {tecnico.certificaciones && tecnico.certificaciones.length > 0 ? (
-                        tecnico.certificaciones.map((cert, index) => (
-                          <div key={index} className="flex items-center gap-4 p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 hover:shadow-lg transition-all">
-                            <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-                              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                            <span className="text-gray-900 font-bold text-lg">{cert}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          No se han especificado certificaciones
-                        </div>
+                      {tecnico.certificaciones?.map((cert) => (
+                        <p key={cert.id}>{cert.nombre} - {cert.institucion}</p>
+                      ))}
+                      {(!tecnico.certificaciones || tecnico.certificaciones.length === 0) && (
+                        <p>No se han especificado certificaciones</p>
                       )}
                     </div>
                   </div>
@@ -638,8 +661,9 @@ function TecnicoDetalleContent({ id }: { id: string }) {
             </div>
           </div>
         </div>
+     
       </main>
-
+      </div>
       <Footer />
 
       {/* Modal de solicitar servicio */}
